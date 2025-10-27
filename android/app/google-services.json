@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "895420289220",
+    "project_id": "restaurant-app-a576e",
+    "storage_bucket": "restaurant-app-a576e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:895420289220:android:e0dd95115794d64762b991",
+        "android_client_info": {
+          "package_name": "com.blood.moon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZTartpyeI0QcFOQQK3EfdE-seLDsgWow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

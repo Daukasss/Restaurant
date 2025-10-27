@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notification_color">#FF5722</color> <!-- 🔔 Любой подходящий цвет -->
+    <!-- <color name="@mipmap/icon_toi_adaptive_back">#FFFFFF</color> -->
+
+</resources>

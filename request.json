@@ -1,0 +1,6 @@
+﻿{
+    "title":  "Привет!",
+    "body":  "Это реальное уведомление",
+    "fcm_token":  "frS_GdeJTSeNENcKbNgnPf:APA91bGctOeX8ipxr9q86gdo1wzqd5zv2KIfnvijrb0nPIFhjOdaC7ratbM7EYqNqntp6CI_9li28nnIj5sAWH-eGBvgolCLe8A7hsJlG8Bbeeg4pCBZe30",
+    "test":  false
+}
