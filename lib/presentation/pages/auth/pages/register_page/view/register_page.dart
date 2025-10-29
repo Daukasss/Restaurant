@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:restauran/presentation/pages/auth/pages/register_page/view/privacy_policy_page.dart';
 import 'package:restauran/presentation/widgets/custom_text_field.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../../../data/services/service_lacator.dart';
 import '../../../../../../data/services/abstract/abstract_auth_services.dart';
 import '../../../very/verification_page.dart';
@@ -31,6 +31,14 @@ class _RegisterPageState extends State<RegisterPage> {
     _confirmPasswordController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  Future<void> linkPolicy() async {
+    final Uri _url = Uri.parse(
+        'https://sites.google.com/view/policy-aqtoi/политика-конфиденциальности');
+    if (!await launchUrl(_url, mode: LaunchMode.externalApplication)) {
+      throw 'Could not launch $_url';
+    }
   }
 
   void _navigateToVerification() {
@@ -141,12 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const PrivacyPolicyPage(),
-                                        ));
+                                    linkPolicy();
                                   },
                                   child: const Text.rich(
                                     TextSpan(
