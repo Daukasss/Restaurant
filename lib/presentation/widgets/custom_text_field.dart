@@ -13,6 +13,8 @@ class CustomTextField extends StatelessWidget {
   final bool enabled;
   final bool isPhoneNumber;
   final bool isMultiplePhones; // Added parameter for multiple phones
+  final int?
+      maxLength; // Added maxLength parameter for flexible character limit
 
   const CustomTextField({
     super.key,
@@ -26,7 +28,8 @@ class CustomTextField extends StatelessWidget {
     this.onChanged,
     this.enabled = true,
     this.isPhoneNumber = false,
-    this.isMultiplePhones = false, // Default to false
+    this.isMultiplePhones = false,
+    this.maxLength, // Added maxLength parameter
   });
 
   @override
@@ -44,13 +47,22 @@ class CustomTextField extends StatelessWidget {
             ? TextInputAction.newline
             : TextInputAction.newline;
 
-    final effectiveInputFormatters = isPhoneNumber && !isMultiplePhones
-        ? [
-            FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]')),
-            LengthLimitingTextInputFormatter(17),
-            PhoneNumberFormatter(),
-          ]
-        : null;
+    List<TextInputFormatter>? effectiveInputFormatters;
+
+    if (isPhoneNumber && !isMultiplePhones) {
+      // Phone number formatting with fixed 17 character limit
+      effectiveInputFormatters = [
+        FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]')),
+        LengthLimitingTextInputFormatter(17),
+        PhoneNumberFormatter(),
+      ];
+    } else if (maxLength != null) {
+      // Custom maxLength limit
+      effectiveInputFormatters = [
+        LengthLimitingTextInputFormatter(maxLength),
+      ];
+    }
+    // If both are null/false, no formatters applied = no limit
 
     return TextFormField(
       controller: controller,

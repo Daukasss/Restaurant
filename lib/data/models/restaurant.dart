@@ -56,7 +56,9 @@ class Restaurant {
       ownerId: json['owner_id'] ?? '',
       photos: photosList,
       bookedDates: bookedDatesList,
-      rating: json['rating'] ?? 5.0,
+      rating: (json['rating'] == null || json['rating'] == 0.0)
+          ? 5.0
+          : (json['rating'] as num).toDouble(),
       sumPeople: json['sum_people'] ?? 0,
     );
   }

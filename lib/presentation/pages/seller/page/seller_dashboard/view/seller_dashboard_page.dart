@@ -55,6 +55,10 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
               title: 'Успех',
               message: state.message,
             );
+            final userId = supabase.auth.currentUser?.id;
+            if (userId != null) {
+              context.read<SellerBloc>().add(LoadRestaurants(userId));
+            }
           } else if (state is SellerOperationFailure) {
             showResultDialog(
               context: context,

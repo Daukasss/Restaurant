@@ -132,7 +132,7 @@ Future<DateTime?> showDatePickerDialog(
               const SizedBox(height: 16),
               TableCalendar(
                 firstDay: DateTime.now(),
-                lastDay: DateTime.now().add(const Duration(days: 90)),
+                lastDay: DateTime.now().add(const Duration(days: 730)),
                 focusedDay: selectedDate,
                 selectedDayPredicate: (day) => isSameDay(day, selectedDate),
                 enabledDayPredicate: (day) {

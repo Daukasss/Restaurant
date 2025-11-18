@@ -132,6 +132,7 @@ class BookingPage extends StatelessWidget {
                           prefixIcon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
                           initialValue: state.phone,
+                          isPhoneNumber: true,
                           onChanged: (value) {
                             bloc.add(UpdatePhoneEvent(value));
                             return;
@@ -185,6 +186,7 @@ class BookingPage extends StatelessWidget {
                         CustomTextField(
                           hintText: 'Количество гостей',
                           prefixIcon: Icons.people_outline,
+                          maxLength: 3,
                           keyboardType: TextInputType.phone,
                           initialValue: state.guests,
                           onChanged: (value) {

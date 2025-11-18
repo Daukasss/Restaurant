@@ -32,6 +32,7 @@ class EditProfileDialog extends StatelessWidget {
               hintText: 'Телефон',
               prefixIcon: Icons.phone_outlined,
               keyboardType: TextInputType.phone,
+              isPhoneNumber: true,
             ),
           ],
         ),

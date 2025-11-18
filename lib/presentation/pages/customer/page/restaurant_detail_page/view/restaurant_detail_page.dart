@@ -318,10 +318,6 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                   onTap: () => _showPhoneActionDialog(phone),
                 )),
           ListTile(
-            leading: const Icon(Icons.access_time),
-            title: Text(state.restaurant?['working_hours'] ?? 'Не указано'),
-          ),
-          ListTile(
             leading: const Icon(Icons.location_on),
             title: Text(state.restaurant?['location'] ?? 'Не указан'),
             onTap: () {

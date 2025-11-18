@@ -50,6 +50,7 @@ class _ProfileViewState extends State<ProfileView>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _phoneController.text = '+7 ';
   }
 
   @override

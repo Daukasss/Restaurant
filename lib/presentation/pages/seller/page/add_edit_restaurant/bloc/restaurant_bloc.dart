@@ -128,7 +128,6 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
 
   Future<void> _onSaveRestaurant(
       SaveRestaurant event, Emitter<RestaurantState> emit) async {
-    // <CHANGE> Проверка на наличие хотя бы одного телефона
     if (state.name.isEmpty ||
         state.location.isEmpty ||
         state.sumPeople.isEmpty ||
@@ -164,12 +163,11 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
         return;
       }
 
-      // <CHANGE> Сохраняем телефоны как массив
       final restaurantData = {
         'name': state.name,
         'description': state.description,
         'location': state.location,
-        'phones': state.phones, // <CHANGE> Массив телефонов
+        'phones': state.phones,
         'sum_people': state.sumPeople,
         'working_hours': state.workingHours,
         'price_range': state.priceRange,
@@ -178,6 +176,7 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
         'booked_dates': state.tempBookedDates
             .map((date) => date.toIso8601String())
             .toList(),
+        'rating': state.rating,
       };
 
       if (state.isEditing) {
@@ -213,8 +212,6 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
       print('[v0] ❌ Ошибка при сохранении ресторана: $e');
     }
   }
-
-  // ... existing code ...
 
   Future<void> _onLoadRestaurantExtras(
       LoadRestaurantExtras event, Emitter<RestaurantState> emit) async {
@@ -446,7 +443,6 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
       ));
     } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка загрузки данных!',
         isLoading: false,
       ));
     }

@@ -176,17 +176,6 @@ class AddRestaurantPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: CustomTextField(
-                    initialValue: state.workingHours,
-                    onChanged: (value) {
-                      bloc.add(UpdateWorkingHours(value));
-                      return;
-                    },
-                    hintText: 'График',
-                    prefixIcon: Icons.access_time,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 16),
