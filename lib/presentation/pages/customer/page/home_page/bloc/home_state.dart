@@ -1,33 +1,52 @@
 import 'package:equatable/equatable.dart';
 
+// Sentinel object to distinguish "not passed" from "explicitly null"
+const _absent = Object();
+
 class HomeState extends Equatable {
   final List<Map<String, dynamic>> restaurants;
   final List<Map<String, dynamic>> filteredRestaurants;
   final bool isLoading;
-  final String? selectedCategory;
+
+  // Фильтры
   final String searchQuery;
+  final String? selectedGlobalCategoryId;
+  final DateTime? selectedDate;
 
   const HomeState({
     this.restaurants = const [],
     this.filteredRestaurants = const [],
     this.isLoading = false,
-    this.selectedCategory,
     this.searchQuery = '',
+    this.selectedGlobalCategoryId,
+    this.selectedDate,
   });
+
+  bool get hasActiveFilters =>
+      searchQuery.isNotEmpty ||
+      selectedGlobalCategoryId != null ||
+      selectedDate != null;
 
   HomeState copyWith({
     List<Map<String, dynamic>>? restaurants,
     List<Map<String, dynamic>>? filteredRestaurants,
     bool? isLoading,
-    String? selectedCategory,
     String? searchQuery,
+    // Используем Object? чтобы можно было явно передать null
+    Object? selectedGlobalCategoryId = _absent,
+    Object? selectedDate = _absent,
   }) {
     return HomeState(
       restaurants: restaurants ?? this.restaurants,
       filteredRestaurants: filteredRestaurants ?? this.filteredRestaurants,
       isLoading: isLoading ?? this.isLoading,
-      selectedCategory: selectedCategory ?? this.selectedCategory,
       searchQuery: searchQuery ?? this.searchQuery,
+      selectedGlobalCategoryId: selectedGlobalCategoryId == _absent
+          ? this.selectedGlobalCategoryId
+          : selectedGlobalCategoryId as String?,
+      selectedDate: selectedDate == _absent
+          ? this.selectedDate
+          : selectedDate as DateTime?,
     );
   }
 
@@ -36,7 +55,8 @@ class HomeState extends Equatable {
         restaurants,
         filteredRestaurants,
         isLoading,
-        selectedCategory,
         searchQuery,
+        selectedGlobalCategoryId,
+        selectedDate,
       ];
 }

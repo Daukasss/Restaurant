@@ -16,7 +16,7 @@ class MenuLoading extends MenuState {}
 class MenuLoaded extends MenuState {
   final List<MenuCategory> categories;
   final List<Map<String, dynamic>> restaurantCategories;
-  final int? selectedRestaurantCategoryId;
+  final String? selectedRestaurantCategoryId;
 
   const MenuLoaded(
     this.categories, {

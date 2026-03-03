@@ -11,8 +11,8 @@ abstract class MenuEvent extends Equatable {
 }
 
 class LoadMenuCategories extends MenuEvent {
-  final int restaurantId;
-  final int? restaurantCategoryId;
+  final String restaurantId;
+  final String? restaurantCategoryId;
 
   const LoadMenuCategories(this.restaurantId, {this.restaurantCategoryId});
 
@@ -21,7 +21,7 @@ class LoadMenuCategories extends MenuEvent {
 }
 
 class LoadRestaurantCategories extends MenuEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const LoadRestaurantCategories(this.restaurantId);
 
@@ -30,8 +30,8 @@ class LoadRestaurantCategories extends MenuEvent {
 }
 
 class SelectRestaurantCategory extends MenuEvent {
-  final int restaurantId;
-  final int restaurantCategoryId;
+  final String restaurantId;
+  final String restaurantCategoryId;
 
   const SelectRestaurantCategory(this.restaurantId, this.restaurantCategoryId);
 
@@ -49,7 +49,7 @@ class AddMenuCategory extends MenuEvent {
 }
 
 class UpdateMenuCategory extends MenuEvent {
-  final int categoryId;
+  final String categoryId;
   final MenuCategory category;
 
   const UpdateMenuCategory(this.categoryId, this.category);
@@ -59,7 +59,7 @@ class UpdateMenuCategory extends MenuEvent {
 }
 
 class DeleteMenuCategory extends MenuEvent {
-  final int categoryId;
+  final String categoryId;
 
   const DeleteMenuCategory(this.categoryId);
 
@@ -77,7 +77,7 @@ class AddMenuItem extends MenuEvent {
 }
 
 class UpdateMenuItem extends MenuEvent {
-  final int menuItemId;
+  final String menuItemId;
   final MenuItem menuItem;
 
   const UpdateMenuItem(this.menuItemId, this.menuItem);
@@ -87,7 +87,7 @@ class UpdateMenuItem extends MenuEvent {
 }
 
 class DeleteMenuItem extends MenuEvent {
-  final int menuItemId;
+  final String menuItemId;
 
   const DeleteMenuItem(this.menuItemId);
 

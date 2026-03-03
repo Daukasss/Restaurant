@@ -17,7 +17,7 @@ class LoadRestaurants extends SellerEvent {
 }
 
 class DeleteRestaurant extends SellerEvent {
-  final int restaurantId;
+  final String restaurantId;
   final String userId;
   const DeleteRestaurant(this.restaurantId, this.userId);
 

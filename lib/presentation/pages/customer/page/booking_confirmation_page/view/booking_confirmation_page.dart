@@ -7,7 +7,7 @@ import '../bloc/booking_confirmation_event.dart';
 import '../bloc/booking_confirmation_state.dart';
 
 class BookingConfirmationPage extends StatelessWidget {
-  final int bookingId;
+  final String? bookingId;
   final String restaurantName;
   final DateTime bookingTime;
   final int guests;

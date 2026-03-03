@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/presentation/widgets/custom_text_field.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../../../data/services/service_lacator.dart';
+import '../../../../../../data/services/service_locator.dart';
 import '../../../../../../data/services/abstract/abstract_auth_services.dart';
 import '../../../very/verification_page.dart';
 import '../cubit/register_cubit.dart';

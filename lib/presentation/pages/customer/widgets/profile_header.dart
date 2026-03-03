@@ -3,14 +3,14 @@ import '../../../../data/models/profile.dart';
 
 class ProfileHeader extends StatelessWidget {
   final Profile profile;
-  final String phone;
+  // final String phone;
   final VoidCallback onEditProfile;
   final VoidCallback? onNavigateToSellerDashboard;
 
   const ProfileHeader({
     super.key,
     required this.profile,
-    required this.phone,
+    // required this.phone,
     required this.onEditProfile,
     this.onNavigateToSellerDashboard,
   });
@@ -36,20 +36,14 @@ class ProfileHeader extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(
-            phone,
-            style: TextStyle(
-              color: Colors.grey[600],
-            ),
-          ),
+          // Text(
+          //   phone,
+          //   style: TextStyle(
+          //     color: Colors.grey[600],
+          //   ),
+          // ),
+
           const SizedBox(height: 8),
-          if (profile.isSeller)
-            const Chip(
-              label: Text('Продавец'),
-              backgroundColor: Colors.green,
-              labelStyle: TextStyle(color: Colors.white),
-            ),
-          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

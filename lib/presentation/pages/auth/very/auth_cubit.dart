@@ -2,8 +2,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/data/services/abstract/abstract_auth_services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../../../data/services/service_lacator.dart';
+import '../../../../data/services/service_locator.dart';
 import 'auth_state.dart' as my_auth;
 
 class AuthCubit extends Bloc<AuthEvent, my_auth.AuthState> {
@@ -82,8 +81,6 @@ class AuthCubit extends Bloc<AuthEvent, my_auth.AuthState> {
               'Не удалось войти. Проверьте номер телефона и пароль.'));
         }
       }
-    } on AuthException catch (e) {
-      if (!isClosed) emit(my_auth.AuthError(e.message));
     } catch (e) {
       if (!isClosed) {
         emit(my_auth.AuthError('Произошла ошибка: ${e.toString()}'));

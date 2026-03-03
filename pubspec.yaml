@@ -37,14 +37,28 @@ dependencies:
   # Notifications
   flutter_local_notifications: ^17.2.0
 
-  # Firebase (совместимые версии)
-  firebase_core: ^2.32.0
-  firebase_messaging: ^14.7.10
+  # Firebase (полностью совместимые)
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  firebase_messaging: ^16.0.2
+  firebase_storage: ^13.0.6
+  intl: ^0.20.2
+  firebase_admin: ^0.3.1+1
+  # Hive — локальная NoSQL БД (офлайн кэш)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  workmanager: ^0.9.0+3
+
+  # Отслеживание состояния сети
+  connectivity_plus: ^6.0.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.9
 
 flutter:
   uses-material-design: true

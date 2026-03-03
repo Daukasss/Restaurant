@@ -3,8 +3,8 @@ import '../../../../data/models/menu_category.dart';
 
 class MenuItemSelector extends StatelessWidget {
   final List<MenuCategory> menuCategories;
-  final Map<int, int> selectedMenuItems;
-  final Function(int, int) onSelectMenuItem;
+  final Map<String, String> selectedMenuItems;
+  final Function(String?, String?) onSelectMenuItem;
 
   const MenuItemSelector({
     super.key,

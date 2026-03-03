@@ -1,12 +1,10 @@
 class Restaurant {
-  final int? id;
+  final String? id;
   final String name;
   final String? description;
   final String? location;
   final String? phone;
   final String? workingHours;
-  // final String? priceRange;
-  // final String? category;
   final String? ownerId;
   final List<String>? photos;
   final List<DateTime>? bookedDates;
@@ -20,8 +18,6 @@ class Restaurant {
     required this.location,
     required this.phone,
     required this.workingHours,
-    // required this.priceRange,
-    // required this.category,
     required this.ownerId,
     required this.photos,
     required this.bookedDates,
@@ -45,14 +41,12 @@ class Restaurant {
     }
 
     return Restaurant(
-      id: json['id'],
+      id: json['id']?.toString(),
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
       phone: json['phone'] ?? '',
       workingHours: json['working_hours'] ?? '',
-      // priceRange: json['price_range'] ?? '',
-      // category: json['category'] ?? 'Mid-range',
       ownerId: json['owner_id'] ?? '',
       photos: photosList,
       bookedDates: bookedDatesList,
@@ -68,13 +62,12 @@ class Restaurant {
         bookedDates!.map((date) => date.toIso8601String()).toList();
 
     return {
+      if (id != null) 'id': id,
       'name': name,
       'description': description,
       'location': location,
       'phone': phone,
       'working_hours': workingHours,
-      // 'price_range': priceRange,
-      // 'category': category,
       'owner_id': ownerId,
       'image_url': photos!.isNotEmpty ? photos![0] : '',
       'photos': photos,
@@ -86,9 +79,9 @@ class Restaurant {
 }
 
 class Favorite {
-  final int id;
+  final String id;
   final String userId;
-  final int restaurantId;
+  final String restaurantId;
   final Restaurant restaurant;
 
   Favorite({
@@ -100,9 +93,9 @@ class Favorite {
 
   factory Favorite.fromJson(Map<String, dynamic> json) {
     return Favorite(
-      id: json['id'],
-      userId: json['user_id'],
-      restaurantId: json['restaurant_id'],
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      restaurantId: json['restaurant_id']?.toString() ?? '',
       restaurant: Restaurant.fromJson(json['restaurants']),
     );
   }

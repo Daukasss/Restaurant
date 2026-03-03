@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:restauran/data/models/profile.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import 'package:restauran/data/services/favorite_service.dart';
 import 'package:restauran/data/services/profile_service.dart';
@@ -50,7 +51,7 @@ class _ProfileViewState extends State<ProfileView>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _phoneController.text = '+7 ';
+    _phoneController.text = '+7 '; // начальное значение
   }
 
   @override
@@ -65,6 +66,7 @@ class _ProfileViewState extends State<ProfileView>
   Widget build(BuildContext context) {
     return BlocConsumer<ProfileBloc, ProfileState>(
       listener: (context, state) {
+        // Если пользователь вышел → переходим на логин
         if (!state.isAuthenticated) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -72,12 +74,30 @@ class _ProfileViewState extends State<ProfileView>
           return;
         }
 
-        if (state.profile != null &&
-            (_nameController.text.isEmpty || _phoneController.text.isEmpty)) {
-          _nameController.text = state.profile!.name;
-          _phoneController.text = state.profile!.phone;
+        // Синхронизируем поля с актуальными данными из состояния
+        if (state.profile != null) {
+          // Обновляем только если значение реально отличается → избегание "мигания" курсора
+          if (_nameController.text != state.profile!.name) {
+            _nameController.text = state.profile!.name;
+          }
+          if (_phoneController.text != state.profile!.phone) {
+            _phoneController.text = state.profile!.phone;
+          }
         }
 
+        // Показываем успех после обновления профиля
+        if (state.wasUpdated) {
+          showResultDialog(
+            context: context,
+            isSuccess: true,
+            title: 'Успешно',
+            message: 'Данные профиля обновлены',
+          );
+          // Сразу сбрасываем флаг, чтобы не показывало повторно
+          context.read<ProfileBloc>().add(ResetUpdateStatus());
+        }
+
+        // Показ ошибок
         if (state.error != null) {
           showResultDialog(
             context: context,
@@ -90,99 +110,92 @@ class _ProfileViewState extends State<ProfileView>
       builder: (context, state) {
         if (state.isLoading || state.profile == null) {
           return Scaffold(
-            appBar: AppBar(
-              title: const Text('Профиль'),
-            ),
-            body: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            appBar: AppBar(title: const Text('Профиль')),
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 
+        final profile = state.profile!;
+
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Профиль'),
-          ),
+          appBar: AppBar(title: const Text('Профиль')),
           body: Column(
             children: [
               ProfileHeader(
-                profile: state.profile!,
-                phone: state.profile!.phone,
+                profile: profile,
                 onEditProfile: _showEditProfileDialog,
                 onNavigateToSellerDashboard:
-                    state.profile!.isSeller ? _navigateToSellerDashboard : null,
+                    profile.isSeller ? _navigateToSellerDashboard : null,
               ),
-              const Padding(
-                padding: EdgeInsets.only(
-                  left: 25.0,
-                  right: 16.0,
-                ),
-                child: Text(
-                  'Для того что бы отменить бронирование свяжитесь с рестораном',
-                ),
-              ),
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Мои бронирования'),
-                  Tab(text: 'Избранное'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
+              if (profile.isUser) ...[
+                TabBar(
                   controller: _tabController,
-                  children: [
-                    state.bookings.isEmpty
-                        ? const Center(child: Text('Пока нет бронирований'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16.0),
-                            itemCount: state.bookings.length,
-                            itemBuilder: (context, index) {
-                              final booking = state.bookings[index];
-                              final restaurant = state.restaurants.firstWhere(
-                                (r) => r.id == booking.restaurantId,
-                                orElse: () => Restaurant(
-                                  id: booking.restaurantId,
-                                  name: 'Неизвестный ресторан',
-                                  sumPeople: null,
-                                  description: '',
-                                  location: '',
-                                  phone: '',
-                                  workingHours: '',
-                                  // priceRange: '',
-                                  // category: '',
-                                  ownerId: '',
-                                  photos: const [],
-                                  bookedDates: const [],
-                                  rating: 5.0,
-                                ),
-                              );
-                              return BookingCard(
-                                key: ValueKey(booking.id),
-                                booking: booking,
-                                restaurant: restaurant,
-                                onBookingUpdated: () {
-                                  context
-                                      .read<ProfileBloc>()
-                                      .add(LoadUserData());
-                                },
-                              );
-                            },
-                          ),
-                    state.favorites.isEmpty
-                        ? const Center(
-                            child: Text('Пока нет избранных ресторанов'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16.0),
-                            itemCount: state.favorites.length,
-                            itemBuilder: (context, index) {
-                              return FavoriteCard(
-                                  favorite: state.favorites[index]);
-                            },
-                          ),
+                  tabs: const [
+                    Tab(text: 'Мои бронирования'),
+                    Tab(text: 'Избранное'),
                   ],
                 ),
-              ),
+              ],
+              if (profile.isUser)
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Мои бронирования
+                      state.bookings.isEmpty
+                          ? const Center(child: Text('Пока нет бронирований'))
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16.0),
+                              itemCount: state.bookings.length,
+                              itemBuilder: (context, index) {
+                                final booking = state.bookings[index];
+
+                                final restaurant = state.restaurants.firstWhere(
+                                  (r) => r.id == booking.restaurantId,
+                                  orElse: () => Restaurant(
+                                    id: booking.restaurantId,
+                                    name: 'Неизвестный ресторан',
+                                    sumPeople: null,
+                                    description: '',
+                                    location: '',
+                                    phone: '',
+                                    workingHours: '',
+                                    ownerId: '',
+                                    photos: const [],
+                                    bookedDates: const [],
+                                    rating: 5.0,
+                                  ),
+                                );
+
+                                return BookingCard(
+                                  key: ValueKey(booking.id),
+                                  booking: booking,
+                                  restaurant: restaurant,
+                                  onBookingUpdated: () {
+                                    context
+                                        .read<ProfileBloc>()
+                                        .add(LoadUserData());
+                                  },
+                                );
+                              },
+                            ),
+
+                      // Избранное
+                      state.favorites.isEmpty
+                          ? const Center(
+                              child: Text('Пока нет избранных ресторанов'))
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16.0),
+                              itemCount: state.favorites.length,
+                              itemBuilder: (context, index) {
+                                return FavoriteCard(
+                                  favorite: state.favorites[index],
+                                );
+                              },
+                            ),
+                    ],
+                  ),
+                ),
             ],
           ),
           bottomNavigationBar: BottomAppBar(
@@ -202,29 +215,34 @@ class _ProfileViewState extends State<ProfileView>
     );
   }
 
-  void _showEditProfileDialog() async {
-    final result = await showDialog<bool>(
+  void _showEditProfileDialog() {
+    showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return EditProfileDialog(
           nameController: _nameController,
           phoneController: _phoneController,
           onSave: () {
+            final name = _nameController.text.trim();
+            final phone = _phoneController.text.trim();
+
+            // Можно добавить здесь базовую валидацию, если нужно
+            if (name.isEmpty || phone.length < 10) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Проверьте введённые данные')),
+              );
+              return;
+            }
+
             context.read<ProfileBloc>().add(
-                  UpdateProfile(
-                    name: _nameController.text,
-                    phone: _phoneController.text,
-                  ),
+                  UpdateProfile(name: name, phone: phone),
                 );
+
+            Navigator.pop(dialogContext);
           },
         );
       },
     );
-
-    // Если данные успешно отправлены — ждем showResultDialog от BlocConsumer
-    if (result == true) {
-      // Ничего не делаем — BlocConsumer покажет результат
-    }
   }
 
   void _navigateToSellerDashboard() {

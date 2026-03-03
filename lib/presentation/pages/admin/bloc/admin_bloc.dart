@@ -1,13 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase/supabase.dart';
 
 import 'admin_event.dart';
 import 'admin_state.dart';
 
 class AdminPanelBloc extends Bloc<AdminPanelEvent, AdminPanelState> {
-  final SupabaseClient supabase;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  AdminPanelBloc({required this.supabase}) : super(AdminPanelInitial()) {
+  AdminPanelBloc() : super(AdminPanelInitial()) {
     on<LoadUsersEvent>(_onLoadUsers);
     on<SearchUsersEvent>(_onSearchUsers);
     on<ChangeRoleEvent>(_onChangeRole);
@@ -20,12 +20,16 @@ class AdminPanelBloc extends Bloc<AdminPanelEvent, AdminPanelState> {
     emit(AdminPanelLoading());
 
     try {
-      final response = await supabase
-          .from('profiles')
-          .select('id, name, phone, role, created_at')
-          .order('created_at', ascending: false);
+      final querySnapshot = await _firestore
+          .collection('profiles')
+          .orderBy('created_at', descending: true)
+          .get();
 
-      final users = List<Map<String, dynamic>>.from(response);
+      final users = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
 
       emit(AdminPanelLoaded(
         users: users,
@@ -65,9 +69,10 @@ class AdminPanelBloc extends Bloc<AdminPanelEvent, AdminPanelState> {
     try {
       final changeRole = event.currentRole == 'seller' ? 'user' : 'seller';
 
-      await supabase
-          .from('profiles')
-          .update({'role': changeRole}).eq('id', event.userId);
+      await _firestore.collection('profiles').doc(event.userId).update({
+        'role': changeRole,
+        'updated_at': FieldValue.serverTimestamp(),
+      });
 
       add(LoadUsersEvent());
     } catch (error) {

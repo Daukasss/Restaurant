@@ -6,26 +6,27 @@ abstract class AbstractRestaurantService {
   // Restaurant methods
   Future<List<Map<String, dynamic>>> getRestaurants();
   Future<List<Map<String, dynamic>>> getRestaurantsByUserId(String userId);
-  Future<void> deleteRestaurant(int restaurantId);
-  Future<void> saveRestaurant(Restaurant restaurant, {int? existingId});
-  Future<Map<String, dynamic>> getRestaurantData(int restaurantId);
+  Future<void> deleteRestaurant(String restaurantId);
+  Future<void> saveRestaurant(Restaurant restaurant, {String? existingId});
+  Future<Map<String, dynamic>> getRestaurantData(String restaurantId);
 
   // Restaurant Category methods
-  Future<RestaurantCategory?> getRestaurantCategoryById(int categoryId);
-  Future<List<RestaurantCategory>> getRestaurantCategories(int restaurantId);
+  Future<RestaurantCategory?> getRestaurantCategoryById(String categoryId);
+  Future<List<RestaurantCategory>> getRestaurantCategories(String restaurantId);
   Future<RestaurantCategory> addRestaurantCategory(RestaurantCategory category);
   Future<RestaurantCategory> updateRestaurantCategory(
       RestaurantCategory category);
-  Future<void> deleteRestaurantCategory(int categoryId);
+  Future<void> deleteRestaurantCategory(String categoryId);
 
   // Restaurant Extra methods (дополнительные опции)
-  Future<List<RestaurantExtra>> getRestaurantExtras(int restaurantId);
+  Future<List<RestaurantExtra>> getRestaurantExtras(String restaurantId);
   Future<RestaurantExtra> addRestaurantExtra(RestaurantExtra extra);
   Future<RestaurantExtra> updateRestaurantExtra(RestaurantExtra extra);
-  Future<void> deleteRestaurantExtra(int extraId);
+  Future<void> deleteRestaurantExtra(String extraId);
 
   // Booked dates methods
-  Future<List<DateTime>> getRestaurantBookedDates(int restaurantId);
-  Future<List<DateTime>> getBookedDates(int restaurantId);
-  Future<void> updateRestaurantBookedDates(int restaurantId, DateTime newDate);
+  Future<List<DateTime>> getRestaurantBookedDates(String restaurantId);
+  Future<List<DateTime>> getBookedDates(String restaurantId);
+  Future<void> updateRestaurantBookedDates(
+      String restaurantId, DateTime newDate);
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:restauran/data/services/service_lacator.dart';
+import 'package:restauran/data/services/service_locator.dart';
 
 import '../../../../../../data/services/abstract/abstract_restaurant_service.dart';
 import 'seller_event.dart';

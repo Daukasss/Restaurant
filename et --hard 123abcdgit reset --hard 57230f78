@@ -1,0 +1,41 @@
+[33mcommit 9b96b2090d0e1503bb03186df533d8bd25f3c073[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Tue Nov 18 23:23:56 2025 +0500
+
+    мелкие ошибки
+
+[33mcommit 57230f78af52d5bc99b7b18811919dad40116db7[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Wed Oct 29 14:34:22 2025 +0500
+
+    I added policy side
+
+[33mcommit 0bbf11ef5f9e6216c339747e4877c2c33a2915ce[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Tue Oct 28 16:22:25 2025 +0500
+
+    Remove .env file from repository and add to .gitignore
+
+[33mcommit b3275eb79c9f637420ca449aecff8530b02e37ce[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Mon Oct 27 22:23:54 2025 +0500
+
+    First commit for realising and instaling in IOS
+
+[33mcommit 837c1699ce80495978eb96aa10fe0de9c03a45e6[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Mon Oct 27 22:22:00 2025 +0500
+
+    First commit for realising and instaling in IOS
+
+[33mcommit 58886a40e9c724b69b5bb702704f46ed2f3768d0[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Mon Oct 27 22:19:42 2025 +0500
+
+    First commit for realising and instaling in IOS
+
+[33mcommit e53e0f23ea1aa03c880aad4c6766f0871f6908e9[m
+Author: Daukasss <tokend85@gmail.com>
+Date:   Mon Oct 27 22:16:43 2025 +0500
+
+    First commit for realising and instaling in IOS

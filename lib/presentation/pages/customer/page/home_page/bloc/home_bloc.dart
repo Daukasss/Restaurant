@@ -1,14 +1,21 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import '../../../../../../theme/aq_toi.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:restauran/data/services/restaurant_service.dart';
 import 'home_event.dart';
 import 'home_state.dart';
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
-  HomeBloc() : super(const HomeState()) {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final RestaurantService _restaurantService;
+
+  HomeBloc({required RestaurantService restaurantService})
+      : _restaurantService = restaurantService,
+        super(const HomeState()) {
     on<LoadRestaurants>(_onLoadRestaurants);
-    on<ApplyFilters>(_onApplyFilters);
-    on<ResetFilters>(_onResetFilters);
+    on<ApplySearchQuery>(_onApplySearch);
+    on<ApplyCategoryAndDateFilter>(_onApplyCategoryAndDateFilter);
+    on<ResetAllFilters>(_onResetAllFilters);
   }
 
   Future<void> _onLoadRestaurants(
@@ -18,71 +25,117 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final response = await supabase
-          .from('restaurants')
-          .select()
-          .order('rating', ascending: false);
+      final querySnapshot = await _firestore
+          .collection('restaurants')
+          .orderBy('rating', descending: true)
+          .get();
 
-      final restaurants = List<Map<String, dynamic>>.from(response);
+      final restaurants = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
 
       emit(state.copyWith(
         restaurants: restaurants,
         filteredRestaurants: restaurants,
         isLoading: false,
       ));
-    } catch (error) {
+    } catch (_) {
       emit(state.copyWith(isLoading: false));
     }
   }
 
-  void _onApplyFilters(
-    ApplyFilters event,
+  void _onApplySearch(
+    ApplySearchQuery event,
     Emitter<HomeState> emit,
   ) {
-    // Создаем новое состояние с переданными параметрами
-    final newState = state.copyWith(
-      // selectedCategory: event.category,
-      searchQuery: event.searchQuery,
+    final updatedState = state.copyWith(searchQuery: event.searchQuery);
+    final filtered = _applySearchFilter(updatedState);
+    emit(updatedState.copyWith(filteredRestaurants: filtered));
+  }
+
+  Future<void> _onApplyCategoryAndDateFilter(
+    ApplyCategoryAndDateFilter event,
+    Emitter<HomeState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true));
+
+    final updatedState = state.copyWith(
+      selectedGlobalCategoryId: event.globalCategoryId,
+      selectedDate: event.selectedDate,
     );
 
-    // Применяем фильтры
-    List<Map<String, dynamic>> filtered = List.from(state.restaurants);
+    try {
+      final filtered = await _applyAllFiltersAsync(updatedState);
 
-    if (event.searchQuery.isNotEmpty) {
-      final query = event.searchQuery.toLowerCase();
-      filtered = filtered
-          .where(
-              (restaurant) => restaurant['name'].toLowerCase().contains(query))
+      emit(updatedState.copyWith(
+        filteredRestaurants: filtered,
+        isLoading: false,
+      ));
+    } catch (e) {
+      debugPrint('Ошибка фильтрации: $e');
+      // Сбрасываем загрузку, показываем все рестораны без фильтра
+      emit(updatedState.copyWith(
+        filteredRestaurants: state.restaurants,
+        isLoading: false,
+      ));
+    }
+  }
+
+  List<Map<String, dynamic>> _applySearchFilter(HomeState current) {
+    List<Map<String, dynamic>> result = List.from(current.restaurants);
+
+    if (current.searchQuery.isNotEmpty) {
+      final q = current.searchQuery.toLowerCase();
+      result = result
+          .where((r) => (r['name'] as String).toLowerCase().contains(q))
           .toList();
     }
 
-    // Эмитим новое состояние с отфильтрованными ресторанами
-    emit(newState.copyWith(filteredRestaurants: filtered));
-
-    // Проверяем состояние после эмита
-    debugPrint(
-        'State after apply: category=${state.selectedCategory}, query=${state.searchQuery}');
+    return result;
   }
 
-  void _onResetFilters(
-    ResetFilters event,
+  Future<List<Map<String, dynamic>>> _applyAllFiltersAsync(
+      HomeState current) async {
+    List<Map<String, dynamic>> result = _applySearchFilter(current);
+
+    // Фильтруем только если выбрана категория (дата опциональна внутри сервиса)
+    if (current.selectedGlobalCategoryId != null) {
+      int? requiredSection;
+
+      final catDoc = await _firestore
+          .collection('global_categories')
+          .doc(current.selectedGlobalCategoryId)
+          .get();
+
+      if (catDoc.exists) {
+        requiredSection = catDoc.data()?['section'] as int?;
+      }
+
+      final availableIds =
+          await _restaurantService.getRestaurantsAvailableForDateAndSection(
+        date: current.selectedDate,
+        section: requiredSection,
+        globalCategoryId: current.selectedGlobalCategoryId,
+      );
+
+      result = result
+          .where((r) => availableIds.contains(r['id'] as String))
+          .toList();
+    }
+
+    return result;
+  }
+
+  void _onResetAllFilters(
+    ResetAllFilters event,
     Emitter<HomeState> emit,
   ) {
-    debugPrint('Resetting filters in bloc');
-
-    // Создаем полностью новое состояние
-    final newState = HomeState(
+    emit(HomeState(
       restaurants: state.restaurants,
       filteredRestaurants: state.restaurants,
       isLoading: false,
-      selectedCategory: null,
-      searchQuery: '',
-    );
-
-    emit(newState);
-
-    // Проверяем состояние после эмита
-    debugPrint(
-        'State after reset: category=${state.selectedCategory}, query=${state.searchQuery}');
+    ));
   }
 }

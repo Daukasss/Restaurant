@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import '../../../../../../data/services/abstract/abstract_auth_services.dart';
-import '../../../../../../data/services/service_lacator.dart';
+import '../../../../data/services/service_locator.dart';
 import '../../admin/view/admin_panel_page.dart';
 import '../../customer/page/home_page/view/home_page.dart';
 import '../../seller/page/seller_dashboard/view/seller_dashboard_page.dart';

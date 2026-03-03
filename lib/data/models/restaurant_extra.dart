@@ -1,8 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 
 class RestaurantExtra extends Equatable {
-  final int? id;
-  final int restaurantId;
+  final String? id;
+  final String restaurantId;
   final String name;
   final double price;
   final String? description;
@@ -21,15 +22,13 @@ class RestaurantExtra extends Equatable {
 
   factory RestaurantExtra.fromJson(Map<String, dynamic> json) {
     return RestaurantExtra(
-      id: json['id'] as int?,
-      restaurantId: json['restaurant_id'] as int,
+      id: json['id']?.toString(),
+      restaurantId: json['restaurant_id']?.toString() ?? '',
       name: json['name'] as String,
       price: (json['price'] as num).toDouble(),
       description: json['description'] as String?,
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : null,
+      createdAt: (json['created_at'] as Timestamp).toDate(),
     );
   }
 
@@ -41,13 +40,13 @@ class RestaurantExtra extends Equatable {
       'price': price,
       if (description != null) 'description': description,
       'is_active': isActive,
-      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      if (createdAt != null) 'created_at': createdAt!,
     };
   }
 
   RestaurantExtra copyWith({
-    int? id,
-    int? restaurantId,
+    String? id,
+    String? restaurantId,
     String? name,
     double? price,
     String? description,

@@ -3,18 +3,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/presentation/pages/seller/page/add_edit_restaurant/bloc/restaurant_state.dart';
+import 'package:restauran/presentation/pages/seller/page/add_edit_restaurant/widget/restaurant_categories_widget.dart';
 import 'dart:async';
 
 import '../../../../../widgets/custom_text_field.dart';
 import '../../../../../widgets/date_range_picker.dart';
 import '../../../../../widgets/photo_gallery.dart';
-import '../widget/restaurant_categories_widget.dart';
 import '../widget/restaurant_extras_widget.dart';
 import '../bloc/restaurant_bloc.dart';
 import '../bloc/restaurant_event.dart';
 
-class AddRestaurantPage extends StatelessWidget {
-  final int restaurantId;
+class AddRestaurantPage extends StatefulWidget {
+  final String restaurantId;
   final String restaurantName;
   final Map<String, dynamic>? restaurant;
 
@@ -26,19 +26,63 @@ class AddRestaurantPage extends StatelessWidget {
   });
 
   @override
+  State<AddRestaurantPage> createState() => _AddRestaurantPageState();
+}
+
+class _AddRestaurantPageState extends State<AddRestaurantPage> {
+  // Контроллеры создаются один раз и живут всё время жизни страницы
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _phonesController = TextEditingController();
+  final _sumPeopleController = TextEditingController();
+
+  // Флаг: данные уже были загружены в контроллеры
+  bool _controllersInitialized = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _locationController.dispose();
+    _phonesController.dispose();
+    _sumPeopleController.dispose();
+    super.dispose();
+  }
+
+  /// Заполняет контроллеры данными из стейта.
+  /// Вызывается только один раз — когда данные реально загрузились.
+  void _initControllers(RestaurantState state) {
+    _nameController.text = state.name;
+    _descriptionController.text = state.description;
+    _locationController.text = state.location;
+    _phonesController.text = state.phones.join('\n');
+    _sumPeopleController.text = state.sumPeople;
+    _controllersInitialized = true;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) {
         final bloc = RestaurantBloc();
         bloc.add(LoadRestaurantData(
-          restaurant: restaurant,
-          restaurantId: restaurantId,
+          restaurant: widget.restaurant,
+          restaurantId: widget.restaurantId,
         ));
-        bloc.add(LoadBookedDates(restaurantId: restaurantId));
+        bloc.add(LoadBookedDates(restaurantId: widget.restaurantId));
         return bloc;
       },
       child: BlocConsumer<RestaurantBloc, RestaurantState>(
         listener: (context, state) {
+          // Заполняем контроллеры ровно один раз — когда загрузка завершена
+          // и данные появились в стейте
+          if (!_controllersInitialized &&
+              !state.isLoading &&
+              state.name.isNotEmpty) {
+            _initControllers(state);
+          }
+
           if (state.error != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.error!)),
@@ -69,16 +113,18 @@ class AddRestaurantPage extends StatelessWidget {
         late StreamSubscription subscription;
         subscription = bloc.stream.listen((newState) {
           if (!newState.isLoading && !completer.isCompleted) {
+            // Обновляем контроллеры при pull-to-refresh
+            _initControllers(newState);
             completer.complete();
             subscription.cancel();
           }
         });
 
         bloc.add(LoadRestaurantData(
-          restaurant: restaurant,
-          restaurantId: restaurantId,
+          restaurant: widget.restaurant,
+          restaurantId: widget.restaurantId,
         ));
-        bloc.add(LoadBookedDates(restaurantId: restaurantId));
+        bloc.add(LoadBookedDates(restaurantId: widget.restaurantId));
 
         await completer.future.timeout(
           const Duration(seconds: 5),
@@ -93,6 +139,7 @@ class AddRestaurantPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ==================== ИНФОРМАЦИЯ О РЕСТОРАНЕ ====================
             const Text(
               'Информация',
               style: TextStyle(
@@ -102,48 +149,31 @@ class AddRestaurantPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             CustomTextField(
-              initialValue: state.name,
-              onChanged: (value) {
-                bloc.add(UpdateName(value));
-                return;
-              },
-              hintText: 'Hазвание ресторана*',
+              controller: _nameController,
+              onChanged: (value) => bloc.add(UpdateName(value)),
+              hintText: 'Название ресторана*',
               prefixIcon: Icons.restaurant,
             ),
             const SizedBox(height: 16),
             CustomTextField(
-              initialValue: state.description,
-              onChanged: (value) {
-                bloc.add(
-                  UpdateDescription(value),
-                );
-                return;
-              },
+              controller: _descriptionController,
+              onChanged: (value) => bloc.add(UpdateDescription(value)),
               hintText: 'Описание',
               prefixIcon: Icons.description,
               keyboardType: TextInputType.multiline,
             ),
             const SizedBox(height: 16),
             CustomTextField(
-              initialValue: state.location,
-              onChanged: (value) {
-                bloc.add(UpdateLocation(value));
-                return;
-              },
+              controller: _locationController,
+              onChanged: (value) => bloc.add(UpdateLocation(value)),
               hintText: 'Местоположение *',
               prefixIcon: Icons.location_on,
             ),
             const SizedBox(height: 16),
-            // <CHANGE> Обновлено поле для телефонов - объединяем массив в строку
             CustomTextField(
-              initialValue: state.phones.join('\n'),
-              onChanged: (value) {
-                bloc.add(
-                  UpdatePhone(value),
-                );
-                return;
-              },
-              hintText: 'Номера телефонов (каждый с новой строки)',
+              controller: _phonesController,
+              onChanged: (value) => bloc.add(UpdatePhone(value)),
+              hintText: 'Номера телефонов',
               prefixIcon: Icons.phone,
               isMultiplePhones: true,
               keyboardType: TextInputType.multiline,
@@ -165,12 +195,9 @@ class AddRestaurantPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: CustomTextField(
-                    initialValue: state.sumPeople,
-                    onChanged: (value) {
-                      bloc.add(UpdateSumPeople(value));
-                      return;
-                    },
-                    hintText: 'Количество мест в одном столе',
+                    controller: _sumPeopleController,
+                    onChanged: (value) => bloc.add(UpdateSumPeople(value)),
+                    hintText: 'Кол-во мест в одном столе',
                     prefixIcon: Icons.people,
                     keyboardType: TextInputType.number,
                   ),
@@ -178,8 +205,9 @@ class AddRestaurantPage extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
             ),
-            const SizedBox(height: 16),
             const SizedBox(height: 24),
+
+            // ==================== КАТЕГОРИИ РЕСТОРАНА ====================
             const Text(
               'Категории ресторана',
               style: TextStyle(
@@ -187,38 +215,33 @@ class AddRestaurantPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Создайте категории после созданий ресторана',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color.fromARGB(255, 255, 0, 0),
-              ),
-            ),
             const SizedBox(height: 16),
-            RestaurantCategoriesWidget(
-              categories: state.restaurantCategories,
+            SellerCategoriesWidget(
+              restaurantId: widget.restaurantId,
+              availableCategories: state.availableGlobalCategories,
+              restaurantCategories: state.restaurantCategories,
               isLoading: state.isCategoriesLoading,
-              onAddCategory: (name, price, description) {
-                bloc.add(AddRestaurantCategory(
-                  name: name,
-                  priceRange: price,
+              onActivateCategory: (globalCategoryId, price, description) {
+                bloc.add(ActivateRestaurantCategory(
+                  globalCategoryId: globalCategoryId,
+                  price: price,
                   description: description,
                 ));
               },
-              onUpdateCategory: (categoryId, name, price, description) {
+              onUpdateCategory: (categoryId, price, description, isActive) {
                 bloc.add(UpdateRestaurantCategory(
                   categoryId: categoryId,
-                  name: name,
-                  priceRange: price,
+                  price: price,
                   description: description,
+                  isActive: isActive,
                 ));
               },
-              onRemoveCategory: (categoryId) {
-                bloc.add(RemoveRestaurantCategory(categoryId));
+              onDeactivateCategory: (categoryId) {
+                bloc.add(DeactivateRestaurantCategory(categoryId));
               },
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 8),
             const Text(
               'Дополнительные опции',
               style: TextStyle(
@@ -226,14 +249,16 @@ class AddRestaurantPage extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Создайте дополнительные опции после создания ресторана',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color.fromARGB(255, 255, 0, 0),
+            if (!state.isEditing) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Создайте дополнительные опции после создания ресторана',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color.fromARGB(255, 255, 0, 0),
+                ),
               ),
-            ),
+            ],
             const SizedBox(height: 16),
             RestaurantExtrasWidget(
               extras: state.restaurantExtras,
@@ -257,7 +282,10 @@ class AddRestaurantPage extends StatelessWidget {
                 bloc.add(RemoveRestaurantExtra(extraId));
               },
             ),
+
             const SizedBox(height: 24),
+
+            // ==================== ИЗОБРАЖЕНИЯ ====================
             const Text(
               'Изображение',
               style: TextStyle(
@@ -272,32 +300,29 @@ class AddRestaurantPage extends StatelessWidget {
                   bloc.add(AddPhoto(restaurantId: state.restaurantId)),
               onRemovePhoto: (index) => bloc.add(RemovePhoto(index)),
             ),
+
             const SizedBox(height: 24),
-            const Text(
-              'Забронированные даты',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: state.isLoading
+                    ? null
+                    : () => bloc.add(SaveRestaurant(context)),
+                child: state.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        state.isEditing ? 'Обновить' : 'Добавить',
+                        style: const TextStyle(fontSize: 16),
+                      ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Выберите даты, когда ресторан будет забронирован',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            DateRangePicker(
-              selectedDates: state.restaurantBookedDates,
-              bookedDates: state.visibleBookedDates,
-              onDatesChanged: (dates) => bloc.add(UpdateBookedDates(dates)),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => bloc.add(SaveRestaurant(context)),
-              child: Text(state.isEditing ? 'Обновить' : 'Добавить'),
             ),
           ],
         ),

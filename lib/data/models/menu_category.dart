@@ -1,50 +1,67 @@
-import 'menu_item.dart';
-
 class MenuCategory {
-  final int id;
-  final int restaurantId;
-  final int? restaurantCategoryId;
+  final String? id;
+  final String restaurantId;
+
+  /// Список ID категорий ресторана, к которым привязана эта категория меню.
+  /// Заменяет старый restaurantCategoryId: String?
+  final List<String> restaurantCategoryIds;
+
   final String name;
   final String description;
   final bool requiresSelection;
   final int displayOrder;
-  final List<MenuItem> menuItems;
+  final List<dynamic> menuItems;
 
   MenuCategory({
-    required this.id,
+    this.id,
     required this.restaurantId,
-    this.restaurantCategoryId,
+    List<String>? restaurantCategoryIds,
+
+    // Обратная совместимость: если передан старый одиночный ID
+    String? restaurantCategoryId,
     required this.name,
     required this.description,
     required this.requiresSelection,
     required this.displayOrder,
     required this.menuItems,
-  });
+  }) : restaurantCategoryIds = restaurantCategoryIds ??
+            (restaurantCategoryId != null ? [restaurantCategoryId] : []);
+
+  /// Удобный геттер для обратной совместимости со старым кодом
+  String? get restaurantCategoryId =>
+      restaurantCategoryIds.isNotEmpty ? restaurantCategoryIds.first : null;
 
   factory MenuCategory.fromJson(Map<String, dynamic> json) {
-    List<MenuItem> items = [];
-    if (json['menu_items'] != null) {
-      items = List<Map<String, dynamic>>.from(json['menu_items'])
-          .map((item) => MenuItem.fromJson(item))
-          .toList();
+    // Поддержка обоих форматов: старый (строка) и новый (массив)
+    List<String> categoryIds = [];
+
+    final rawIds = json['restaurant_category_ids'];
+    final rawId = json['restaurant_category_id'];
+
+    if (rawIds != null && rawIds is List) {
+      categoryIds = rawIds.map((e) => e.toString()).toList();
+    } else if (rawId != null) {
+      // Миграция старых данных
+      categoryIds = [rawId.toString()];
     }
 
     return MenuCategory(
-      id: json['id'],
-      restaurantId: json['restaurant_id'],
-      restaurantCategoryId: json['restaurant_category_id'],
+      id: json['id']?.toString(),
+      restaurantId: json['restaurant_id']?.toString() ?? '',
+      restaurantCategoryIds: categoryIds,
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       requiresSelection: json['requires_selection'] ?? false,
       displayOrder: json['display_order'] ?? 0,
-      menuItems: items,
+      menuItems: json['menu_items'] ?? [],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) 'id': id,
       'restaurant_id': restaurantId,
-      'restaurant_category_id': restaurantCategoryId,
+      'restaurant_category_ids': restaurantCategoryIds,
       'name': name,
       'description': description,
       'requires_selection': requiresSelection,
@@ -53,19 +70,20 @@ class MenuCategory {
   }
 
   MenuCategory copyWith({
-    int? id,
-    int? restaurantId,
-    int? restaurantCategoryId,
+    String? id,
+    String? restaurantId,
+    List<String>? restaurantCategoryIds,
     String? name,
     String? description,
     bool? requiresSelection,
     int? displayOrder,
-    List<MenuItem>? menuItems,
+    List<dynamic>? menuItems,
   }) {
     return MenuCategory(
       id: id ?? this.id,
       restaurantId: restaurantId ?? this.restaurantId,
-      restaurantCategoryId: restaurantCategoryId ?? this.restaurantCategoryId,
+      restaurantCategoryIds:
+          restaurantCategoryIds ?? this.restaurantCategoryIds,
       name: name ?? this.name,
       description: description ?? this.description,
       requiresSelection: requiresSelection ?? this.requiresSelection,

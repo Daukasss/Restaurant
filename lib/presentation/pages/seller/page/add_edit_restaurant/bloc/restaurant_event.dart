@@ -10,7 +10,7 @@ abstract class RestaurantEvent extends Equatable {
 
 class LoadRestaurantData extends RestaurantEvent {
   final Map<String, dynamic>? restaurant;
-  final int restaurantId;
+  final String restaurantId;
 
   const LoadRestaurantData({
     this.restaurant,
@@ -22,7 +22,7 @@ class LoadRestaurantData extends RestaurantEvent {
 }
 
 class LoadBookedDates extends RestaurantEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const LoadBookedDates({required this.restaurantId});
 
@@ -103,7 +103,7 @@ class UpdateCategory extends RestaurantEvent {
 }
 
 class AddPhoto extends RestaurantEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const AddPhoto({required this.restaurantId});
 
@@ -147,58 +147,73 @@ class SaveRestaurant extends RestaurantEvent {
   List<Object?> get props => [context];
 }
 
-class AddRestaurantCategory extends RestaurantEvent {
-  final String name;
-  final double priceRange;
-  final String? description;
+// ==================== НОВЫЕ СОБЫТИЯ ДЛЯ КАТЕГОРИЙ ====================
 
-  const AddRestaurantCategory({
-    required this.name,
-    required this.priceRange,
-    this.description,
-  });
+/// Загрузить доступные глобальные категории для ресторана
+class LoadAvailableGlobalCategories extends RestaurantEvent {
+  final String restaurantId;
+
+  const LoadAvailableGlobalCategories(this.restaurantId);
 
   @override
-  List<Object?> get props => [name, priceRange, description];
+  List<Object?> get props => [restaurantId];
 }
 
-class UpdateRestaurantCategory extends RestaurantEvent {
-  final int categoryId;
-  final String? name;
-  final double? priceRange;
-  final String? description;
-  final bool? isActive;
-
-  const UpdateRestaurantCategory({
-    required this.categoryId,
-    this.name,
-    this.priceRange,
-    this.description,
-    this.isActive,
-  });
-
-  @override
-  List<Object?> get props =>
-      [categoryId, name, priceRange, description, isActive];
-}
-
-class RemoveRestaurantCategory extends RestaurantEvent {
-  final int categoryId;
-
-  const RemoveRestaurantCategory(this.categoryId);
-
-  @override
-  List<Object?> get props => [categoryId];
-}
-
+/// Загрузить категории ресторана
 class LoadRestaurantCategories extends RestaurantEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const LoadRestaurantCategories(this.restaurantId);
 
   @override
   List<Object?> get props => [restaurantId];
 }
+
+/// Активировать глобальную категорию для ресторана
+class ActivateRestaurantCategory extends RestaurantEvent {
+  final String globalCategoryId;
+  final double price;
+  final String? description;
+
+  const ActivateRestaurantCategory({
+    required this.globalCategoryId,
+    required this.price,
+    this.description,
+  });
+
+  @override
+  List<Object?> get props => [globalCategoryId, price, description];
+}
+
+/// Обновить категорию ресторана (цена, описание, активность)
+class UpdateRestaurantCategory extends RestaurantEvent {
+  final String categoryId;
+  final double? price;
+  final String? description;
+  final bool? isActive;
+
+  const UpdateRestaurantCategory({
+    required this.categoryId,
+    this.price,
+    this.description,
+    this.isActive,
+  });
+
+  @override
+  List<Object?> get props => [categoryId, price, description, isActive];
+}
+
+/// Деактивировать категорию ресторана
+class DeactivateRestaurantCategory extends RestaurantEvent {
+  final String categoryId;
+
+  const DeactivateRestaurantCategory(this.categoryId);
+
+  @override
+  List<Object?> get props => [categoryId];
+}
+
+// ==================== СОБЫТИЯ ДЛЯ EXTRAS ====================
 
 class AddRestaurantExtra extends RestaurantEvent {
   final String name;
@@ -216,7 +231,7 @@ class AddRestaurantExtra extends RestaurantEvent {
 }
 
 class UpdateRestaurantExtra extends RestaurantEvent {
-  final int extraId;
+  final String extraId;
   final String? name;
   final double? price;
   final String? description;
@@ -235,7 +250,7 @@ class UpdateRestaurantExtra extends RestaurantEvent {
 }
 
 class RemoveRestaurantExtra extends RestaurantEvent {
-  final int extraId;
+  final String extraId;
 
   const RemoveRestaurantExtra(this.extraId);
 
@@ -244,7 +259,7 @@ class RemoveRestaurantExtra extends RestaurantEvent {
 }
 
 class LoadRestaurantExtras extends RestaurantEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const LoadRestaurantExtras(this.restaurantId);
 

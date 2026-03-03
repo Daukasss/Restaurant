@@ -12,6 +12,7 @@ class Profile {
   });
 
   bool get isSeller => role == 'seller';
+  bool get isUser => role == 'user';
 
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(

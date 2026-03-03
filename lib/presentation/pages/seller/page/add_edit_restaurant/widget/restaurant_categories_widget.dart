@@ -1,72 +1,67 @@
 import 'package:flutter/material.dart';
-import '../../../../../../data/models/restaurant_category.dart';
+import 'package:restauran/data/models/global_category.dart';
+import 'package:restauran/data/models/restaurant_category.dart';
 
-class RestaurantCategoriesWidget extends StatefulWidget {
-  final List<RestaurantCategory> categories;
+class SellerCategoriesWidget extends StatefulWidget {
+  final String restaurantId;
+  final List<GlobalCategory> availableCategories;
+  final List<RestaurantCategory> restaurantCategories;
   final bool isLoading;
-  final Function(String name, double price, String? description) onAddCategory;
-  final Function(
-          int categoryId, String? name, double? price, String? description)
-      onUpdateCategory;
-  final Function(int categoryId) onRemoveCategory;
 
-  const RestaurantCategoriesWidget({
+  final Function(String globalCategoryId, double price, String? description)
+      onActivateCategory;
+
+  final Function(
+          String categoryId, double? price, String? description, bool? isActive)
+      onUpdateCategory;
+
+  final Function(String categoryId) onDeactivateCategory;
+
+  const SellerCategoriesWidget({
     super.key,
-    required this.categories,
+    required this.restaurantId,
+    required this.availableCategories,
+    required this.restaurantCategories,
     required this.isLoading,
-    required this.onAddCategory,
+    required this.onActivateCategory,
     required this.onUpdateCategory,
-    required this.onRemoveCategory,
+    required this.onDeactivateCategory,
   });
 
   @override
-  State<RestaurantCategoriesWidget> createState() =>
-      _RestaurantCategoriesWidgetState();
+  State<SellerCategoriesWidget> createState() => _SellerCategoriesWidgetState();
 }
 
-class _RestaurantCategoriesWidgetState
-    extends State<RestaurantCategoriesWidget> {
-  final _nameController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _descriptionController = TextEditingController();
-
-  void _showAddCategoryDialog() {
-    _nameController.clear();
-    _priceController.clear();
-    _descriptionController.clear();
+class _SellerCategoriesWidgetState extends State<SellerCategoriesWidget> {
+  // ================= АКТИВАЦИЯ =================
+  void _showActivateCategoryDialog(GlobalCategory globalCategory) {
+    final priceController =
+        TextEditingController(text: globalCategory.defaultPrice.toString());
+    final descriptionController =
+        TextEditingController(text: globalCategory.description ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Добавить категорию'),
+        title: Text('Активировать "${globalCategory.name}"'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Название категории',
-                  hintText: 'Например: Люкс, VIP, Бюджетный',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Цена за гостя',
-                  hintText: '20000',
-                ),
+                controller: priceController,
                 keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Цена за гость',
+                  suffixText: 'Тг',
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
-                controller: _descriptionController,
+                controller: descriptionController,
                 decoration: const InputDecoration(
-                  labelText: 'Описание (необязательно)',
-                  hintText: 'Описание категории',
-                ),
-                maxLines: 2,
+                    labelText: 'Описание (необязательно)'),
+                maxLines: 3,
               ),
             ],
           ),
@@ -78,65 +73,55 @@ class _RestaurantCategoriesWidgetState
           ),
           ElevatedButton(
             onPressed: () {
-              if (_nameController.text.isNotEmpty &&
-                  _priceController.text.isNotEmpty) {
-                final price = double.tryParse(_priceController.text);
-                if (price != null) {
-                  widget.onAddCategory(
-                    _nameController.text,
-                    price,
-                    _descriptionController.text.isEmpty
-                        ? null
-                        : _descriptionController.text,
-                  );
-                  Navigator.pop(context);
-                }
-              }
+              final price = double.tryParse(priceController.text);
+              if (price == null) return;
+
+              widget.onActivateCategory(
+                globalCategory.id!,
+                price,
+                descriptionController.text.isEmpty
+                    ? null
+                    : descriptionController.text,
+              );
+
+              Navigator.pop(context);
             },
-            child: const Text('Добавить'),
+            child: const Text('Активировать'),
           ),
         ],
       ),
     );
   }
 
+  // ================= РЕДАКТ =================
   void _showEditCategoryDialog(RestaurantCategory category) {
-    _nameController.text = category.name;
-    _priceController.text = category.priceRange.toString();
-    _descriptionController.text = category.description ?? '';
+    final priceController =
+        TextEditingController(text: category.priceRange.toString());
+    final descriptionController =
+        TextEditingController(text: category.description ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Редактировать категорию'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Название категории',
-                ),
+        title: Text('Редактировать "${category.name}"'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Цена',
+                suffixText: 'Тг',
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Цена за гостя',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Описание (необязательно)',
-                ),
-                maxLines: 2,
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descriptionController,
+              decoration:
+                  const InputDecoration(labelText: 'Описание (необязательно)'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -145,21 +130,19 @@ class _RestaurantCategoriesWidgetState
           ),
           ElevatedButton(
             onPressed: () {
-              if (_nameController.text.isNotEmpty &&
-                  _priceController.text.isNotEmpty) {
-                final price = double.tryParse(_priceController.text);
-                if (price != null) {
-                  widget.onUpdateCategory(
-                    category.id!,
-                    _nameController.text,
-                    price,
-                    _descriptionController.text.isEmpty
-                        ? null
-                        : _descriptionController.text,
-                  );
-                  Navigator.pop(context);
-                }
-              }
+              final price = double.tryParse(priceController.text);
+              if (price == null) return;
+
+              widget.onUpdateCategory(
+                category.id!,
+                price,
+                descriptionController.text.isEmpty
+                    ? null
+                    : descriptionController.text,
+                null,
+              );
+
+              Navigator.pop(context);
             },
             child: const Text('Сохранить'),
           ),
@@ -170,67 +153,121 @@ class _RestaurantCategoriesWidgetState
 
   @override
   Widget build(BuildContext context) {
+    final Map<int, List<GlobalCategory>> availableBySection = {};
+    final Map<int, List<RestaurantCategory>> restaurantBySection = {};
+
+    for (var c in widget.availableCategories) {
+      availableBySection.putIfAbsent(c.section, () => []).add(c);
+    }
+    for (var c in widget.restaurantCategories) {
+      restaurantBySection.putIfAbsent(c.section, () => []).add(c);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Список существующих категорий
-        if (widget.categories.isNotEmpty)
-          ...widget.categories.map((category) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(category.name),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                          '${category.priceRange.toStringAsFixed(0)} Тг за гостя'),
-                      if (category.description != null)
-                        Text(category.description!,
-                            style: const TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _showEditCategoryDialog(category),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => widget.onRemoveCategory(category.id!),
-                      ),
-                    ],
-                  ),
-                ),
-              )),
-
-        // Кнопка добавления новой категории
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: widget.isLoading ? null : _showAddCategoryDialog,
-            icon: widget.isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add),
-            label:
-                Text(widget.isLoading ? 'Загрузка...' : 'Добавить категорию'),
+        if (availableBySection.containsKey(1) ||
+            restaurantBySection.containsKey(1))
+          _buildSection(
+            available: availableBySection[1] ?? [],
+            restaurant: restaurantBySection[1] ?? [],
           ),
-        ),
+        const SizedBox(height: 24),
+        if (availableBySection.containsKey(2) ||
+            restaurantBySection.containsKey(2))
+          _buildSection(
+            available: availableBySection[2] ?? [],
+            restaurant: restaurantBySection[2] ?? [],
+          ),
       ],
     );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _priceController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
+  Widget _buildSection({
+    required List<GlobalCategory> available,
+    required List<RestaurantCategory> restaurant,
+  }) {
+    final activatedIds = restaurant.map((e) => e.globalCategoryId).toSet();
+    final availableToActivate =
+        available.where((c) => !activatedIds.contains(c.id)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (restaurant.isNotEmpty) ...[
+          ...restaurant.map((category) => Card(
+                child: ListTile(
+                  leading: const Icon(Icons.check_circle, color: Colors.green),
+                  title: Text(category.name),
+                  subtitle: Text(
+                      "Цена: ${category.priceRange.toStringAsFixed(0)} Тг"),
+                  trailing: SizedBox(
+                    width: 130,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        PopupMenuButton(
+                            itemBuilder: (_) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Редактировать'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete,
+                                            color: Colors.red, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Деактивировать',
+                                            style:
+                                                TextStyle(color: Colors.red)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showEditCategoryDialog(category);
+                              } else if (value == 'delete') {
+                                widget.onDeactivateCategory(category.id!);
+                              }
+                            }),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+          const SizedBox(height: 16),
+        ],
+        if (availableToActivate.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...availableToActivate.map((category) => Card(
+                child: ListTile(
+                  leading:
+                      const Icon(Icons.add_circle_outline, color: Colors.grey),
+                  title: Text(category.name),
+                  subtitle: Text(
+                      "Цена: ${category.defaultPrice.toStringAsFixed(0)} Тг"),
+                  trailing: SizedBox(
+                    width: 120,
+                    child: ElevatedButton(
+                      onPressed: widget.isLoading
+                          ? null
+                          : () => _showActivateCategoryDialog(category),
+                      child: const Icon(Icons.add, size: 18),
+                    ),
+                  ),
+                ),
+              )),
+        ],
+      ],
+    );
   }
 }

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:restauran/data/services/abstract/abstract_booking_service.dart';
+import 'package:restauran/data/services/abstract/abstract_category_closure_service.dart';
+import 'package:restauran/data/services/abstract/abstract_menu_service.dart';
+import 'package:restauran/data/services/abstract/abstract_restaurant_service.dart';
+import 'package:restauran/data/services/service_locator.dart';
+import 'package:restauran/presentation/pages/customer/page/booking_page/bloc/booking_bloc.dart';
+import 'package:restauran/presentation/pages/customer/page/restaurant_detail_page/widgets/build_menu_tab.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
-import '../../../../seller/widgets/menu_item_card.dart';
 import '../../../widgets/fullscreen_image_viewer.dart';
 import '../../booking_page/view/booking_page.dart';
 import '../bloc/restaurant_detail_bloc.dart';
@@ -10,7 +16,7 @@ import '../bloc/restaurant_detail_state.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RestaurantDetailPage extends StatelessWidget {
-  final int restaurantId;
+  final String restaurantId;
 
   const RestaurantDetailPage({super.key, required this.restaurantId});
 
@@ -25,7 +31,7 @@ class RestaurantDetailPage extends StatelessWidget {
 }
 
 class RestaurantDetailView extends StatefulWidget {
-  final int restaurantId;
+  final String restaurantId;
 
   const RestaurantDetailView({super.key, required this.restaurantId});
 
@@ -172,7 +178,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                           controller: _tabController,
                           children: [
                             _buildOverviewTab(state),
-                            _buildMenuTab(state),
+                            BuildMenuTab(context: context, state: state),
                           ],
                         ),
                       ),
@@ -334,143 +340,6 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
     );
   }
 
-  Widget _buildMenuTab(RestaurantDetailState state) {
-    if (state.restaurantCategories.isEmpty) {
-      return const Center(child: Text('Меню отсутствует'));
-    }
-
-    final List<Widget> allItems = [];
-
-    for (final restaurantCategory in state.restaurantCategories) {
-      final categoryData =
-          state.menuByRestaurantCategory[restaurantCategory.id];
-
-      if (categoryData == null) continue;
-
-      final menuCategories =
-          categoryData['menuCategories'] as List<Map<String, dynamic>>;
-      final menuItemsByMenuCategory =
-          categoryData['menuItems'] as Map<int, List<Map<String, dynamic>>>;
-
-      allItems.add(
-        Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                restaurantCategory.name,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).primaryColor,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              if (restaurantCategory.description != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  restaurantCategory.description!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-
-      if (menuCategories.isEmpty) {
-        allItems.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            child: Text(
-              'В этой категории нет меню',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-        );
-      } else {
-        for (final menuCategory in menuCategories) {
-          final menuCategoryId = menuCategory['id'] as int;
-          final menuCategoryName = menuCategory['name'] as String;
-          final items = menuItemsByMenuCategory[menuCategoryId] ?? [];
-
-          allItems.add(
-            Container(
-              width: double.infinity,
-              margin:
-                  const EdgeInsets.only(top: 16, bottom: 8, left: 8, right: 8),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).primaryColor,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  menuCategoryName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          );
-
-          if (items.isEmpty) {
-            allItems.add(
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                child: Text(
-                  'В этой категории нет блюд',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            );
-          } else {
-            for (final item in items) {
-              allItems.add(
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                  child: MenuItemCard(
-                    name: item['name'],
-                    description: item['description'],
-                    imageUrl: item['image_url'],
-                  ),
-                ),
-              );
-            }
-          }
-        }
-      }
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: allItems,
-      ),
-    );
-  }
-
   Widget _buildBottomBar(BuildContext context, RestaurantDetailState state) {
     return BottomAppBar(
       child: Padding(
@@ -480,9 +349,17 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => BookingPage(
-                  restaurantId: widget.restaurantId,
-                  restaurantName: state.restaurant?['name'] ?? '',
+                builder: (_) => BlocProvider(
+                  create: (_) => BookingBloc(
+                    bookingService: getIt<AbstractBookingService>(),
+                    restaurantService: getIt<AbstractRestaurantService>(),
+                    menuService: getIt<AbstractMenuService>(),
+                    closureService: getIt<AbstractCategoryClosureService>(),
+                  ),
+                  child: BookingPage(
+                    restaurantId: widget.restaurantId,
+                    restaurantName: state.restaurant?['name'] ?? '',
+                  ),
                 ),
               ),
             );

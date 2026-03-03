@@ -1,13 +1,17 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:developer' as developer;
 import '../../../../../../data/models/restaurant_category.dart';
-import '../../../../../../theme/aq_toi.dart';
 import 'restaurant_detail_event.dart';
 import 'restaurant_detail_state.dart';
 
 class RestaurantDetailBloc
     extends Bloc<RestaurantDetailEvent, RestaurantDetailState> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   RestaurantDetailBloc() : super(const RestaurantDetailState()) {
     on<FetchRestaurantData>(_onFetchRestaurantData);
     on<ToggleFavorite>(_onToggleFavorite);
@@ -20,50 +24,64 @@ class RestaurantDetailBloc
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      final restaurant = await supabase
-          .from('restaurants')
-          .select()
-          .eq('id', event.restaurantId)
-          .single();
+      // Получаем ресторан
+      final restaurantDoc = await _firestore
+          .collection('restaurants')
+          .doc(event.restaurantId.toString())
+          .get();
 
-      final restaurantCategoriesData = await supabase
-          .from('restaurant_categories')
-          .select()
-          .eq('restaurant_id', event.restaurantId)
-          .eq('is_active', true)
-          .order('created_at', ascending: true);
+      if (!restaurantDoc.exists) {
+        throw Exception('Ресторан не найден');
+      }
 
-      final restaurantCategories =
-          List<Map<String, dynamic>>.from(restaurantCategoriesData)
-              .map((json) => RestaurantCategory.fromJson(json))
-              .toList();
+      final restaurant = restaurantDoc.data()!;
+      restaurant['id'] = (restaurantDoc.id);
 
-      final menuByRestaurantCategory = <int, Map<String, dynamic>>{};
+      // Получаем категории ресторана
+      final restaurantCategoriesSnapshot = await _firestore
+          .collection('restaurant_categories')
+          .where('restaurant_id', isEqualTo: event.restaurantId)
+          .where('is_active', isEqualTo: true)
+          .orderBy('created_at')
+          .get();
+
+      final restaurantCategories = restaurantCategoriesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return RestaurantCategory.fromJson(data);
+      }).toList();
+
+      final menuByRestaurantCategory = <String, Map<String, dynamic>>{};
 
       for (final restCategory in restaurantCategories) {
-        // Load menu categories for this restaurant category
-        final menuCategories = await supabase
-            .from('menu_categories')
-            .select()
-            .eq('restaurant_id', event.restaurantId)
-            .eq('restaurant_category_id', restCategory.id as Object);
+        // Загружаем категории меню для этой категории ресторана
+        // Используем array-contains т.к. поле restaurant_category_ids — список
+        final menuCategoriesSnapshot = await _firestore
+            .collection('menu_categories')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .where('restaurant_category_ids', arrayContains: restCategory.id)
+            .get();
 
-        final menuCategoriesList =
-            List<Map<String, dynamic>>.from(menuCategories);
+        final menuCategoriesList = menuCategoriesSnapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
 
-        final menuItemsByMenuCategory =
-            Map<int, List<Map<String, dynamic>>>.fromEntries(
-                menuCategoriesList.map((category) =>
-                    MapEntry(category['id'] as int, <Map<String, dynamic>>[])));
+        final menuItemsByMenuCategory = <String, List<Map<String, dynamic>>>{};
 
         for (final menuCategory in menuCategoriesList) {
-          final menuItems = await supabase
-              .from('menu_items')
-              .select()
-              .eq('category_id', menuCategory['id']);
+          final menuItemsSnapshot = await _firestore
+              .collection('menu_items')
+              .where('category_id', isEqualTo: menuCategory['id'])
+              .get();
 
-          menuItemsByMenuCategory[menuCategory['id'] as int] =
-              List<Map<String, dynamic>>.from(menuItems);
+          menuItemsByMenuCategory[menuCategory['id']] =
+              menuItemsSnapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
         }
 
         menuByRestaurantCategory[restCategory.id!] = {
@@ -72,33 +90,44 @@ class RestaurantDetailBloc
         };
       }
 
-      // Получаем категории меню
-      final categories = await supabase
-          .from('menu_categories')
-          .select()
-          .eq('restaurant_id', event.restaurantId);
+      // Получаем все категории меню
+      final categoriesSnapshot = await _firestore
+          .collection('menu_categories')
+          .where('restaurant_id', isEqualTo: event.restaurantId)
+          .get();
+
+      final categoriesList = categoriesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
 
       // Получаем все блюда
-      final menuItems = await supabase
-          .from('menu_items')
-          .select()
-          .eq('restaurant_id', event.restaurantId);
+      final menuItemsSnapshot = await _firestore
+          .collection('menu_items')
+          .where('restaurant_id', isEqualTo: event.restaurantId)
+          .get();
 
+      final menuItemsList = menuItemsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+
+      // Проверяем, в избранном ли ресторан
       bool isFavorite = false;
-      final currentUser = supabase.auth.currentUser;
+      final currentUser = _auth.currentUser;
       if (currentUser != null) {
-        final favs = await supabase
-            .from('favorites')
-            .select()
-            .eq('user_id', currentUser.id)
-            .eq('restaurant_id', event.restaurantId);
+        final favsSnapshot = await _firestore
+            .collection('favorites')
+            .where('user_id', isEqualTo: currentUser.uid)
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .get();
 
-        isFavorite = favs.isNotEmpty;
+        isFavorite = favsSnapshot.docs.isNotEmpty;
       }
 
       final photoUrls = _parsePhotos(restaurant);
-      final menuItemsList = List<Map<String, dynamic>>.from(menuItems);
-      final categoriesList = List<Map<String, dynamic>>.from(categories);
 
       // Группируем блюда по категориям
       final menuItemsByCategory = _groupMenuItemsByCategory(menuItemsList);
@@ -127,7 +156,7 @@ class RestaurantDetailBloc
     ToggleFavorite event,
     Emitter<RestaurantDetailState> emit,
   ) async {
-    final currentUser = supabase.auth.currentUser;
+    final currentUser = _auth.currentUser;
     if (currentUser == null) {
       emit(state.copyWith(
         error: 'Пожалуйста, войдите в систему, чтобы добавить в избранное.',
@@ -137,15 +166,22 @@ class RestaurantDetailBloc
 
     try {
       if (state.isFavorite) {
-        await supabase
-            .from('favorites')
-            .delete()
-            .eq('user_id', currentUser.id)
-            .eq('restaurant_id', event.restaurantId);
+        // Удаляем из избранного
+        final favsSnapshot = await _firestore
+            .collection('favorites')
+            .where('user_id', isEqualTo: currentUser.uid)
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .get();
+
+        for (var doc in favsSnapshot.docs) {
+          await doc.reference.delete();
+        }
       } else {
-        await supabase.from('favorites').insert({
-          'user_id': currentUser.id,
+        // Добавляем в избранное
+        await _firestore.collection('favorites').add({
+          'user_id': currentUser.uid,
           'restaurant_id': event.restaurantId,
+          'created_at': FieldValue.serverTimestamp(),
         });
       }
 
@@ -189,12 +225,12 @@ class RestaurantDetailBloc
   }
 
   // Метод для группировки блюд по категориям
-  Map<int, List<Map<String, dynamic>>> _groupMenuItemsByCategory(
+  Map<String, List<Map<String, dynamic>>> _groupMenuItemsByCategory(
       List<Map<String, dynamic>> menuItems) {
-    final result = <int, List<Map<String, dynamic>>>{};
+    final result = <String, List<Map<String, dynamic>>>{};
 
     for (final item in menuItems) {
-      final categoryId = item['category_id'] as int;
+      final categoryId = item['category_id'] as String;
       if (!result.containsKey(categoryId)) {
         result[categoryId] = [];
       }

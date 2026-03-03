@@ -25,13 +25,12 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
       LoadMenuCategories event, Emitter<MenuState> emit) async {
     emit(MenuLoading());
     try {
-      // Сначала загружаем категории ресторана
       final restaurantCategories =
           await _menuService.getRestaurantCategories(event.restaurantId);
 
-      int? selectedCategoryId = event.restaurantCategoryId;
+      String? selectedCategoryId = event.restaurantCategoryId;
       if (selectedCategoryId == null && restaurantCategories.isNotEmpty) {
-        selectedCategoryId = restaurantCategories.first['id'] as int;
+        selectedCategoryId = restaurantCategories.first['id'];
       }
 
       List<MenuCategory> categories;
@@ -93,10 +92,14 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
       await _menuService.addCategory(event.category);
       emit(CategoryAdded());
 
-      // Reload categories after adding
+      // Перезагружаем с первой из привязанных категорий
+      final reloadCategoryId = event.category.restaurantCategoryIds.isNotEmpty
+          ? event.category.restaurantCategoryIds.first
+          : null;
+
       add(LoadMenuCategories(
         event.category.restaurantId,
-        restaurantCategoryId: event.category.restaurantCategoryId,
+        restaurantCategoryId: reloadCategoryId,
       ));
     } catch (error) {
       emit(MenuError('Failed to add category: ${error.toString()}'));
@@ -109,10 +112,13 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
       await _menuService.updateCategory(event.categoryId, event.category);
       emit(CategoryUpdated());
 
-      // Reload categories after updating
+      final reloadCategoryId = event.category.restaurantCategoryIds.isNotEmpty
+          ? event.category.restaurantCategoryIds.first
+          : null;
+
       add(LoadMenuCategories(
         event.category.restaurantId,
-        restaurantCategoryId: event.category.restaurantCategoryId,
+        restaurantCategoryId: reloadCategoryId,
       ));
     } catch (error) {
       emit(MenuError('Failed to update category: ${error.toString()}'));
@@ -122,25 +128,24 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
   Future<void> _onDeleteMenuCategory(
       DeleteMenuCategory event, Emitter<MenuState> emit) async {
     try {
-      // Store the current state to get restaurantId after deletion
       final currentState = state;
-      int? restaurantId;
-      int? restaurantCategoryId;
+      String? restaurantId;
+      String? restaurantCategoryId;
 
       if (currentState is MenuLoaded && currentState.categories.isNotEmpty) {
-        // Find the category to get its restaurantId
         final category = currentState.categories.firstWhere(
           (c) => c.id == event.categoryId,
           orElse: () => currentState.categories.first,
         );
         restaurantId = category.restaurantId;
-        restaurantCategoryId = category.restaurantCategoryId;
+        restaurantCategoryId = category.restaurantCategoryIds.isNotEmpty
+            ? category.restaurantCategoryIds.first
+            : null;
       }
 
       await _menuService.deleteCategory(event.categoryId);
       emit(CategoryDeleted());
 
-      // Reload categories after deletion
       if (restaurantId != null) {
         add(LoadMenuCategories(
           restaurantId,
@@ -157,8 +162,6 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
     try {
       await _menuService.addMenuItem(event.menuItem);
       emit(MenuItemAdded());
-
-      // Reload categories after adding item
       add(LoadMenuCategories(event.menuItem.restaurantId));
     } catch (error) {
       emit(MenuError('Failed to add menu item: ${error.toString()}'));
@@ -170,8 +173,6 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
     try {
       await _menuService.updateMenuItem(event.menuItemId, event.menuItem);
       emit(MenuItemUpdated());
-
-      // Reload categories after updating item
       add(LoadMenuCategories(event.menuItem.restaurantId));
     } catch (error) {
       emit(MenuError('Failed to update menu item: ${error.toString()}'));
@@ -181,21 +182,16 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
   Future<void> _onDeleteMenuItem(
       DeleteMenuItem event, Emitter<MenuState> emit) async {
     try {
-      // Store the current state to get restaurantId after deletion
       final currentState = state;
-      int? restaurantId;
+      String? restaurantId;
 
-      if (currentState is MenuLoaded) {
-        // Find the restaurantId from any category
-        if (currentState.categories.isNotEmpty) {
-          restaurantId = currentState.categories.first.restaurantId;
-        }
+      if (currentState is MenuLoaded && currentState.categories.isNotEmpty) {
+        restaurantId = currentState.categories.first.restaurantId;
       }
 
       await _menuService.deleteMenuItem(event.menuItemId);
       emit(MenuItemDeleted());
 
-      // Reload categories after deletion
       if (restaurantId != null) {
         add(LoadMenuCategories(restaurantId));
       }

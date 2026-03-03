@@ -1,72 +1,170 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:restauran/data/services/abstract/service_export.dart';
-
-import '../../theme/aq_toi.dart';
 import '../models/menu_category.dart';
 import '../models/menu_item.dart';
 
 class MenuService implements AbstractMenuService {
-  @override
-  Future<List<MenuCategory>> getMenuCategories(int restaurantId) async {
-    final response = await supabase
-        .from('menu_categories')
-        .select('*, menu_items(*)')
-        .eq('restaurant_id', restaurantId)
-        .order('display_order', ascending: true);
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => MenuCategory.fromJson(json))
-        .toList();
+  @override
+  Future<List<MenuCategory>> getMenuCategories(
+    String restaurantId, {
+    String? restaurantCategoryId,
+  }) async {
+    if (restaurantCategoryId != null) {
+      return getMenuCategoriesByRestaurantCategory(
+          restaurantId, restaurantCategoryId);
+    }
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('menu_categories')
+          .where('restaurant_id', isEqualTo: restaurantId)
+          .orderBy('display_order')
+          .get();
+
+      return await _buildCategories(querySnapshot.docs);
+    } catch (error) {
+      print('Ошибка загрузки категорий меню: $error');
+      throw Exception('Failed to load menu categories: $error');
+    }
   }
 
+  /// Фильтрация по одной категории ресторана.
+  /// Использует array-contains, чтобы поддерживать новый формат (список ID).
   Future<List<MenuCategory>> getMenuCategoriesByRestaurantCategory(
-      int restaurantId, int restaurantCategoryId) async {
-    final response = await supabase
-        .from('menu_categories')
-        .select('*, menu_items(*)')
-        .eq('restaurant_id', restaurantId)
-        .eq('restaurant_category_id', restaurantCategoryId)
-        .order('display_order', ascending: true);
+    String restaurantId,
+    String restaurantCategoryId,
+  ) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('menu_categories')
+          .where('restaurant_id', isEqualTo: restaurantId)
+          .where('restaurant_category_ids', arrayContains: restaurantCategoryId)
+          .orderBy('display_order')
+          .get();
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => MenuCategory.fromJson(json))
-        .toList();
+      return await _buildCategories(querySnapshot.docs);
+    } catch (error) {
+      print('Ошибка загрузки категорий меню по категории ресторана: $error');
+      throw Exception(
+          'Failed to load menu categories by restaurant category: $error');
+    }
+  }
+
+  /// Внутренний хелпер: строит List<MenuCategory> из документов Firestore,
+  /// подгружая menu_items для каждой категории.
+  Future<List<MenuCategory>> _buildCategories(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    final categories = <MenuCategory>[];
+
+    for (var doc in docs) {
+      final data = doc.data();
+      data['id'] = doc.id;
+
+      // Миграция: если старое поле restaurant_category_id ещё есть — конвертируем
+      if (data['restaurant_category_ids'] == null &&
+          data['restaurant_category_id'] != null) {
+        data['restaurant_category_ids'] = [data['restaurant_category_id']];
+      }
+
+      final menuItemsSnapshot = await _firestore
+          .collection('menu_items')
+          .where('category_id', isEqualTo: doc.id)
+          .get();
+
+      data['menu_items'] = menuItemsSnapshot.docs.map((itemDoc) {
+        final itemData = itemDoc.data();
+        itemData['id'] = itemDoc.id;
+        return itemData;
+      }).toList();
+
+      categories.add(MenuCategory.fromJson(data));
+    }
+
+    return categories;
   }
 
   @override
   Future<void> addCategory(MenuCategory category) async {
-    await supabase.from('menu_categories').insert(category.toJson());
+    try {
+      final data = category.toJson();
+      data['created_at'] = FieldValue.serverTimestamp();
+      await _firestore.collection('menu_categories').add(data);
+    } catch (error) {
+      print('Ошибка добавления категории меню: $error');
+      throw Exception('Failed to add menu category: $error');
+    }
   }
 
   @override
-  Future<void> updateCategory(int categoryId, MenuCategory category) async {
-    await supabase
-        .from('menu_categories')
-        .update(category.toJson())
-        .eq('id', categoryId);
+  Future<void> updateCategory(String categoryId, MenuCategory category) async {
+    try {
+      final data = category.toJson();
+      data.remove('id');
+      data['updated_at'] = FieldValue.serverTimestamp();
+      await _firestore
+          .collection('menu_categories')
+          .doc(categoryId)
+          .update(data);
+    } catch (error) {
+      print('Ошибка обновления категории меню: $error');
+      throw Exception('Failed to update menu category: $error');
+    }
   }
 
   @override
-  Future<void> deleteCategory(int categoryId) async {
-    await supabase.from('menu_items').delete().eq('category_id', categoryId);
-    await supabase.from('menu_categories').delete().eq('id', categoryId);
+  Future<void> deleteCategory(String categoryId) async {
+    try {
+      final menuItemsSnapshot = await _firestore
+          .collection('menu_items')
+          .where('category_id', isEqualTo: categoryId)
+          .get();
+
+      for (var doc in menuItemsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      await _firestore.collection('menu_categories').doc(categoryId).delete();
+    } catch (error) {
+      print('Ошибка удаления категории меню: $error');
+      throw Exception('Failed to delete menu category: $error');
+    }
   }
 
   @override
   Future<void> addMenuItem(MenuItem menuItem) async {
-    await supabase.from('menu_items').insert(menuItem.toJson());
+    try {
+      final data = menuItem.toJson();
+      data['created_at'] = FieldValue.serverTimestamp();
+      await _firestore.collection('menu_items').add(data);
+    } catch (error) {
+      print('Ошибка добавления элемента меню: $error');
+      throw Exception('Failed to add menu item: $error');
+    }
   }
 
   @override
-  Future<void> updateMenuItem(int menuItemId, MenuItem menuItem) async {
-    await supabase
-        .from('menu_items')
-        .update(menuItem.toJson())
-        .eq('id', menuItemId);
+  Future<void> updateMenuItem(String menuItemId, MenuItem menuItem) async {
+    try {
+      final data = menuItem.toJson();
+      data.remove('id');
+      data['updated_at'] = FieldValue.serverTimestamp();
+      await _firestore.collection('menu_items').doc(menuItemId).update(data);
+    } catch (error) {
+      print('Ошибка обновления элемента меню: $error');
+      throw Exception('Failed to update menu item: $error');
+    }
   }
 
   @override
-  Future<void> deleteMenuItem(int menuItemId) async {
-    await supabase.from('menu_items').delete().eq('id', menuItemId);
+  Future<void> deleteMenuItem(String menuItemId) async {
+    try {
+      await _firestore.collection('menu_items').doc(menuItemId).delete();
+    } catch (error) {
+      print('Ошибка удаления элемента меню: $error');
+      throw Exception('Failed to delete menu item: $error');
+    }
   }
 
   @override
@@ -74,15 +172,28 @@ class MenuService implements AbstractMenuService {
       List<Map<String, dynamic>> menuSelections) async {
     try {
       final menuItemIds =
-          menuSelections.map((selection) => selection['id']).toList();
+          menuSelections.map((s) => s['id'].toString()).toList();
+      if (menuItemIds.isEmpty) return [];
 
-      final response = await supabase
-          .from('menu_items')
-          .select('*, menu_categories(name)')
-          .contains('id', menuItemIds);
-
-      return List<Map<String, dynamic>>.from(response);
+      final results = <Map<String, dynamic>>[];
+      for (var itemId in menuItemIds) {
+        final doc = await _firestore.collection('menu_items').doc(itemId).get();
+        if (doc.exists) {
+          final data = doc.data()!;
+          data['id'] = doc.id;
+          final categoryDoc = await _firestore
+              .collection('menu_categories')
+              .doc(data['category_id'].toString())
+              .get();
+          if (categoryDoc.exists) {
+            data['menu_categories'] = {'name': categoryDoc.data()!['name']};
+          }
+          results.add(data);
+        }
+      }
+      return results;
     } catch (error) {
+      print('Ошибка загрузки выбранных элементов меню: $error');
       throw Exception('Failed to load menu selections');
     }
   }
@@ -91,81 +202,79 @@ class MenuService implements AbstractMenuService {
   Future<List<Map<String, dynamic>>> fetchMenuSelections(
       Map<String, dynamic> booking) async {
     final List<Map<String, dynamic>> result = [];
-
-    // Check if menu_selections exists and is not null
-    if (booking['menu_selections'] == null) {
-      return result;
-    }
+    if (booking['menu_selections'] == null) return result;
 
     try {
-      // Parse the JSONB data
       final Map<String, dynamic> menuSelections = booking['menu_selections'];
-
-      // For each category-item pair
       for (final categoryId in menuSelections.keys) {
         final itemId = menuSelections[categoryId];
-
-        // Fetch category name
-        final categoryResponse = await supabase
-            .from('menu_categories')
-            .select('name')
-            .eq('id', int.parse(categoryId))
-            .single();
-
-        // Fetch item name
-        final itemResponse = await supabase
-            .from('menu_items')
-            .select('name')
-            .eq('id', itemId)
-            .single();
-
+        final categoryDoc = await _firestore
+            .collection('menu_categories')
+            .doc(categoryId.toString())
+            .get();
+        if (!categoryDoc.exists) continue;
+        final itemDoc = await _firestore
+            .collection('menu_items')
+            .doc(itemId.toString())
+            .get();
+        if (!itemDoc.exists) continue;
         result.add({
-          'category': categoryResponse['name'],
-          'item': itemResponse['name']
+          'category': categoryDoc.data()!['name'],
+          'item': itemDoc.data()!['name'],
         });
       }
-
       return result;
     } catch (error) {
+      print('Ошибка получения выбранных элементов меню: $error');
       return result;
     }
   }
 
   Future<List<Map<String, dynamic>>> getRestaurantCategories(
-      int restaurantId) async {
+      String restaurantId) async {
     try {
-      final response = await supabase
-          .from('restaurant_categories')
-          .select()
-          .eq('restaurant_id', restaurantId)
-          .eq('is_active', true)
-          .order('created_at', ascending: true);
+      final querySnapshot = await _firestore
+          .collection('restaurant_categories')
+          .where('restaurant_id', isEqualTo: restaurantId)
+          .where('is_active', isEqualTo: true)
+          .orderBy('created_at')
+          .get();
 
-      return List<Map<String, dynamic>>.from(response);
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
     } catch (error) {
+      print('Ошибка загрузки категорий ресторана: $error');
       throw Exception('Failed to load restaurant categories: $error');
     }
   }
 
   Future<Map<String, dynamic>> getRestaurantCategoryWithMenus(
-      int restaurantId, int restaurantCategoryId) async {
+      String restaurantId, String restaurantCategoryId) async {
     try {
-      // Получаем информацию о категории ресторана
-      final categoryResponse = await supabase
-          .from('restaurant_categories')
-          .select()
-          .eq('id', restaurantCategoryId)
-          .single();
+      final categoryDoc = await _firestore
+          .collection('restaurant_categories')
+          .doc(restaurantCategoryId)
+          .get();
 
-      // Получаем категории меню для этой категории ресторана
+      if (!categoryDoc.exists) {
+        throw Exception('Категория ресторана не найдена');
+      }
+
+      final categoryData = categoryDoc.data()!;
+      categoryData['id'] = categoryDoc.id;
+
       final menuCategories = await getMenuCategoriesByRestaurantCategory(
           restaurantId, restaurantCategoryId);
 
       return {
-        'restaurant_category': categoryResponse,
+        'restaurant_category': categoryData,
         'menu_categories': menuCategories,
       };
     } catch (error) {
+      print('Ошибка загрузки категории ресторана с меню: $error');
       throw Exception('Failed to load restaurant category with menus: $error');
     }
   }

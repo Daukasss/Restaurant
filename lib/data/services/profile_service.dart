@@ -1,50 +1,74 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:restauran/data/services/abstract/service_export.dart';
-import '../../theme/aq_toi.dart';
 import '../models/profile.dart';
 
 class ProfileService implements AbstractProfileService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
   @override
   Future<Profile> getProfile() async {
-    final response = await supabase
-        .from('profiles')
-        .select('id, name, phone, role')
-        .eq('id', supabase.auth.currentUser!.id)
-        .single();
-    return Profile.fromJson(response);
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('Пользователь не авторизован');
+    }
+
+    final doc =
+        await _firestore.collection('profiles').doc(currentUser.uid).get();
+
+    if (!doc.exists) {
+      throw Exception('Профиль не найден');
+    }
+
+    return Profile.fromJson(doc.data()!);
   }
 
   @override
   Future<void> updateProfile(String name, String phone) async {
-    await supabase.from('profiles').update({
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('Пользователь не авторизован');
+    }
+
+    await _firestore.collection('profiles').doc(currentUser.uid).update({
       'name': name,
       'phone': phone,
-    }).eq('id', supabase.auth.currentUser!.id);
+      'updated_at': FieldValue.serverTimestamp(),
+    });
   }
 
   @override
   Future<void> loadUserInfo(TextEditingController nameController,
       TextEditingController phoneController) async {
-    final user = supabase.auth.currentUser;
-    if (user != null) {
-      final response =
-          await supabase.from('profiles').select().eq('id', user.id).single();
-      nameController.text = response['name'] ?? '';
-      phoneController.text = response['phone'] ?? '';
+    final currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      final doc =
+          await _firestore.collection('profiles').doc(currentUser.uid).get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        nameController.text = data['name'] ?? '';
+        phoneController.text = data['phone'] ?? '';
+      }
     }
   }
 
   Future<Map<String, String?>> getUserInfo() async {
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) return {'name': null, 'phone': null};
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return {'name': null, 'phone': null};
 
-      final response =
-          await supabase.from('profiles').select().eq('id', userId).single();
+      final doc =
+          await _firestore.collection('profiles').doc(currentUser.uid).get();
 
+      if (!doc.exists) return {'name': null, 'phone': null};
+
+      final data = doc.data()!;
       return {
-        'name': response['name'],
-        'phone': response['phone'],
+        'name': data['name'],
+        'phone': data['phone'],
       };
     } catch (error) {
       debugPrint('Error getting user info: $error');
@@ -54,42 +78,46 @@ class ProfileService implements AbstractProfileService {
 
   @override
   Future<void> addUserProfile(Profile profile) async {
-    await supabase.from('profiles').insert(profile.toJson());
+    await _firestore.collection('profiles').doc(profile.id).set({
+      ...profile.toJson(),
+      'created_at': FieldValue.serverTimestamp(),
+    });
   }
 
   @override
   Future<void> updateUserProfile(Profile profile) async {
-    await supabase
-        .from('profiles')
-        .update(profile.toJson())
-        .eq('id', profile.id);
+    await _firestore.collection('profiles').doc(profile.id).update({
+      ...profile.toJson(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
   }
 
   @override
   Future<void> deleteUserProfile(String userId) async {
-    await supabase.from('profiles').delete().eq('id', userId);
+    await _firestore.collection('profiles').doc(userId).delete();
   }
 
   @override
   Future<Profile?> getUserProfile(String userId) async {
-    final response =
-        await supabase.from('profiles').select().eq('id', userId).maybeSingle();
-    if (response == null) return null;
-    return Profile.fromJson(response);
+    final doc = await _firestore.collection('profiles').doc(userId).get();
+
+    if (!doc.exists) return null;
+
+    return Profile.fromJson(doc.data()!);
   }
 
   @override
   Future<void> signOut() async {
-    await supabase.auth.signOut();
+    await _auth.signOut();
   }
 
   @override
   bool isAuthenticated() {
-    return supabase.auth.currentUser != null;
+    return _auth.currentUser != null;
   }
 
   @override
   String? getCurrentUserId() {
-    return supabase.auth.currentUser?.id;
+    return _auth.currentUser?.uid;
   }
 }

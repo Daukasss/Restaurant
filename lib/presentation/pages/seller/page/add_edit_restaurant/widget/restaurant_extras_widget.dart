@@ -5,9 +5,10 @@ class RestaurantExtrasWidget extends StatelessWidget {
   final List<RestaurantExtra> extras;
   final bool isLoading;
   final Function(String name, double price, String? description) onAddExtra;
-  final Function(int extraId, String? name, double? price, String? description)
+  final Function(
+          String extraId, String? name, double? price, String? description)
       onUpdateExtra;
-  final Function(int extraId) onRemoveExtra;
+  final Function(String extraId) onRemoveExtra;
 
   const RestaurantExtrasWidget({
     super.key,
@@ -37,27 +38,41 @@ class RestaurantExtrasWidget extends StatelessWidget {
                 child: ListTile(
                   title: Text(
                     extra.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${extra.price.toStringAsFixed(0)} Тг'),
+                  subtitle: GestureDetector(
+                    onTap: () {
                       if (extra.description != null &&
-                          extra.description!.isNotEmpty)
-                        Text(
+                          extra.description!.isNotEmpty) {
+                        _showFullDescription(
+                          context,
+                          extra.name,
                           extra.description!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                    ],
+                        );
+                      }
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${extra.price.toStringAsFixed(0)} Тг'),
+                        if (extra.description != null &&
+                            extra.description!.isNotEmpty)
+                          Text(
+                            extra.description!.replaceAll('\n', ' ').trim(),
+                            maxLines: 1, // ← строго одна строка
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
+                    ),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.edit,
-                        ),
+                        icon: const Icon(Icons.edit),
                         onPressed: () => _showEditExtraDialog(context, extra),
                       ),
                       IconButton(
@@ -81,6 +96,47 @@ class RestaurantExtrasWidget extends StatelessWidget {
           label: const Text('Добавить дополнительную опцию'),
         ),
       ],
+    );
+  }
+
+  void _showFullDescription(
+    BuildContext context,
+    String title,
+    String description,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      builder: (_) => SafeArea(
+        child: Container(
+          width: double.infinity, // ← ширина экрана
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -251,7 +307,7 @@ class RestaurantExtrasWidget extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(
-      BuildContext context, int extraId, String extraName) {
+      BuildContext context, String extraId, String extraName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

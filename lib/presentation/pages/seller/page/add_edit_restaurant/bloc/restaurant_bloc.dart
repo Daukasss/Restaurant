@@ -1,22 +1,28 @@
-// ignore_for_file: avoid_print, use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously
 
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:restauran/data/services/abstract/service_export.dart';
-import 'package:restauran/data/services/service_lacator.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../../widgets/result_diolog.dart';
-import 'restaurant_event.dart';
-import 'restaurant_state.dart';
+import '../../../../../../data/models/restaurant.dart';
 import '../../../../../../data/models/restaurant_category.dart';
 import '../../../../../../data/models/restaurant_extra.dart';
+import '../../../../../../data/services/restaurant_service.dart';
+import '../../../../../../data/services/category_service.dart'; // НОВОЕ
+import 'restaurant_event.dart';
+import 'restaurant_state.dart';
 
 class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
-  final _restaurantService = getIt<AbstractRestaurantService>();
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final RestaurantService _restaurantService;
+  final CategoryService _categoryService = CategoryService(); // НОВОЕ
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  RestaurantBloc() : super(const RestaurantState()) {
+  RestaurantBloc({RestaurantService? restaurantService})
+      : _restaurantService = restaurantService ?? RestaurantService(),
+        super(const RestaurantState()) {
     on<LoadRestaurantData>(_onLoadRestaurantData);
     on<LoadBookedDates>(_onLoadBookedDates);
     on<UpdateName>(_onUpdateName);
@@ -32,370 +38,248 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     on<UpdateTempBookedDates>(_onUpdateTempBookedDates);
     on<UpdateBookedDates>(_onUpdateBookedDates);
     on<SaveRestaurant>(_onSaveRestaurant);
+
+    // НОВЫЕ обработчики для категорий
+    on<LoadAvailableGlobalCategories>(_onLoadAvailableGlobalCategories);
     on<LoadRestaurantCategories>(_onLoadRestaurantCategories);
-    on<AddRestaurantCategory>(_onAddRestaurantCategory);
+    on<ActivateRestaurantCategory>(_onActivateRestaurantCategory);
     on<UpdateRestaurantCategory>(_onUpdateRestaurantCategory);
-    on<RemoveRestaurantCategory>(_onRemoveRestaurantCategory);
+    on<DeactivateRestaurantCategory>(_onDeactivateRestaurantCategory);
+
+    // Extras
     on<LoadRestaurantExtras>(_onLoadRestaurantExtras);
     on<AddRestaurantExtra>(_onAddRestaurantExtra);
     on<UpdateRestaurantExtra>(_onUpdateRestaurantExtra);
     on<RemoveRestaurantExtra>(_onRemoveRestaurantExtra);
   }
 
-  // ... existing code ...
-
-  void _onLoadRestaurantData(
-      LoadRestaurantData event, Emitter<RestaurantState> emit) {
-    final restaurant = event.restaurant;
-    final isEditing = restaurant != null;
-
-    if (isEditing) {
-      List<String> photoUrls = [];
-      if (restaurant['photos'] != null) {
-        photoUrls = List<String>.from(restaurant['photos']);
-      } else if (restaurant['image_url'] != null) {
-        final imageUrl = restaurant['image_url'];
-        if (imageUrl is String && imageUrl.isNotEmpty) {
-          photoUrls = [imageUrl];
-        } else if (imageUrl is List && imageUrl.isNotEmpty) {
-          photoUrls = imageUrl.map((url) => url.toString()).toList();
-        }
-      }
-
-      // <CHANGE> Загрузка телефонов как массива
-      List<String> phones = [];
-      if (restaurant['phones'] != null) {
-        // Новый формат - массив телефонов
-        phones = List<String>.from(restaurant['phones']);
-      } else if (restaurant['phone'] != null) {
-        // Старый формат - один телефон (для обратной совместимости)
-        final phoneValue = restaurant['phone'].toString();
-        if (phoneValue.isNotEmpty) {
-          // Если телефон содержит переносы строк, разделяем
-          phones = phoneValue
-              .split('\n')
-              .map((p) => p.trim())
-              .where((p) => p.isNotEmpty)
-              .toList();
-        }
-      }
-
-      emit(state.copyWith(
-        name: restaurant['name'] ?? '',
-        description: restaurant['description'] ?? '',
-        location: restaurant['location'] ?? '',
-        phones: phones, // <CHANGE> Используем массив телефонов
-        workingHours: restaurant['working_hours'] ?? '',
-        priceRange: restaurant['price_range'] ?? '',
-        category: restaurant['category'] ?? 'Mid-range',
-        sumPeople: restaurant['sum_people']?.toString() ?? '',
-        photoUrls: photoUrls,
-        restaurantBookedDates: restaurant['booked_dates'] != null
-            ? (restaurant['booked_dates'] as List)
-                .map((date) => DateTime.parse(date))
-                .toList()
-            : [],
-        isEditing: true,
-        rating: restaurant['rating'] ?? 5.0,
-        restaurantId: event.restaurantId,
-      ));
-
-      add(LoadRestaurantCategories(event.restaurantId));
-      add(LoadRestaurantExtras(event.restaurantId));
-    } else {
-      emit(state.copyWith(
-        isEditing: false,
-        restaurantId: event.restaurantId,
-      ));
-    }
-  }
-
-  // ... existing code ...
-
-  // <CHANGE> Обновлен метод для обработки множественных телефонов
-  void _onUpdatePhone(UpdatePhone event, Emitter<RestaurantState> emit) {
-    // Разделяем строку по переносам строки и убираем пустые значения
-    final phoneList = event.phone
-        .split('\n')
-        .map((p) => p.trim())
-        .where((p) => p.isNotEmpty)
-        .toList();
-
-    emit(state.copyWith(phones: phoneList));
-  }
-
-  // ... existing code ...
-
-  Future<void> _onSaveRestaurant(
-      SaveRestaurant event, Emitter<RestaurantState> emit) async {
-    if (state.name.isEmpty ||
-        state.location.isEmpty ||
-        state.sumPeople.isEmpty ||
-        state.photoUrls.isEmpty ||
-        state.phones.isEmpty) {
-      showResultDialog(
-        context: event.context,
-        isSuccess: false,
-        title: 'Ошибка',
-        message:
-            'Заполните все обязательные поля, включая хотя бы один номер телефона!',
-      );
-      return;
-    }
-
+  Future<void> _onLoadRestaurantData(
+    LoadRestaurantData event,
+    Emitter<RestaurantState> emit,
+  ) async {
     emit(state.copyWith(isLoading: true));
 
     try {
-      final currentUserId = _supabase.auth.currentUser?.id;
-      print('[v0] Current user ID: $currentUserId');
+      print('╔═══════════════════════════════════════════════');
+      print('║  LoadRestaurantData event received');
+      print('║  restaurantId: ${event.restaurantId}');
+      print('║  event.restaurant type: ${event.restaurant?.runtimeType}');
+      print('╚═══════════════════════════════════════════════');
 
-      if (currentUserId == null) {
+      if (event.restaurant != null) {
+        final data = event.restaurant!;
+
+        // Очень подробный лог входящих данных
+        print('Входящие данные ресторана (Map):');
+        print('Количество ключей: ${data.length}');
+        print('Ключи: ${data.keys.toList().join(", ")}');
+
+        // Показываем значения важных полей (если они есть)
+        print('name         → ${data['name']}');
+        print('description  → ${data['description']}');
+        print('location     → ${data['location']}');
+        print('phone        → ${data['phone']}');
+        print(
+            'photos       → ${data['photos']} (type: ${data['photos']?.runtimeType})');
+        print('booked_dates → ${data['booked_dates']}');
+        print('rating       → ${data['rating']}');
+        print('sum_people   → ${data['sum_people']}');
+        print('owner_id     → ${data['owner_id']}');
+        print('---');
+
+        // Пробуем создать модель
+        final restaurant = Restaurant.fromJson(data);
+
+        print('После Restaurant.fromJson:');
+        print('name:            ${restaurant.name}');
+        print('description:     ${restaurant.description}');
+        print('location:        ${restaurant.location}');
+        print('phone:           ${restaurant.phone}');
+        print(
+            'photos:          ${restaurant.photos} (length: ${restaurant.photos?.length ?? 0})');
+        print(
+            'bookedDates:     ${restaurant.bookedDates} (length: ${restaurant.bookedDates?.length ?? 0})');
+        print('rating:          ${restaurant.rating}');
+        print('sumPeople:       ${restaurant.sumPeople}');
+        print('---');
+
+        // Парсинг телефонов (особое внимание, т.к. это вручную)
+        List<String> phones = [];
+        final phoneRaw = data['phone']?.toString() ?? '';
+        if (phoneRaw.isNotEmpty) {
+          phones = phoneRaw
+              .split('\n')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        }
+        print('Спарсенные телефоны: $phones (count: ${phones.length})');
+
+        emit(state.copyWith(
+          name: restaurant.name,
+          description: restaurant.description ?? '',
+          location: restaurant.location ?? '',
+          phones: phones,
+          workingHours: restaurant.workingHours ?? '',
+          sumPeople: restaurant.sumPeople?.toString() ?? '',
+          photoUrls: restaurant.photos ?? [],
+          restaurantBookedDates: restaurant.bookedDates ?? [],
+          rating: restaurant.rating ?? 5.0,
+          isEditing: true,
+          isLoading: false,
+          restaurantId: event.restaurantId,
+        ));
+
+        print('Состояние после emit (основные поля):');
+        print('name → ${restaurant.name}');
+        print('phones → $phones');
+        print('photos → ${restaurant.photos?.length ?? 0} шт');
+        print('bookedDates → ${restaurant.bookedDates?.length ?? 0} дат');
+      } else {
+        print('event.restaurant == null → это создание нового ресторана');
+
+        // Генерируем ID заранее, чтобы фото можно было загружать до сохранения ресторана
+        final newRestaurantId = event.restaurantId.isNotEmpty
+            ? event.restaurantId
+            : _restaurantService.generateRestaurantId();
+
         emit(state.copyWith(
           isLoading: false,
-          error: 'Ошибка: пользователь не авторизован',
+          restaurantId: newRestaurantId,
+          isEditing: false,
         ));
-        showResultDialog(
-          context: event.context,
-          isSuccess: false,
-          title: 'Ошибка',
-          message: 'Пользователь не авторизован',
-        );
-        return;
       }
 
-      final restaurantData = {
-        'name': state.name,
-        'description': state.description,
-        'location': state.location,
-        'phones': state.phones,
-        'sum_people': state.sumPeople,
-        'working_hours': state.workingHours,
-        'price_range': state.priceRange,
-        'photos': state.photoUrls,
-        'image_url': state.photoUrls.isNotEmpty ? state.photoUrls.first : null,
-        'booked_dates': state.tempBookedDates
-            .map((date) => date.toIso8601String())
-            .toList(),
-        'rating': state.rating,
-      };
-
-      if (state.isEditing) {
-        print('[v0] Updating restaurant ID: ${state.restaurantId}');
-        await _supabase
-            .from('restaurants')
-            .update(restaurantData)
-            .eq('id', state.restaurantId);
-
-        await _deleteBookingsForRemovedDates(state.restaurantId,
-            state.restaurantBookedDates, state.tempBookedDates);
-      } else {
-        restaurantData['owner_id'] = currentUserId;
-        print('[v0] Creating new restaurant with owner_id: $currentUserId');
-        print('[v0] Restaurant data: $restaurantData');
-
-        await _supabase.from('restaurants').insert(restaurantData);
-        print('[v0] Restaurant created successfully');
+      // Загрузка дополнительных данных
+      if (event.restaurantId.isNotEmpty) {
+        print(
+            'Запускаем загрузку категорий и extras для id: ${event.restaurantId}');
+        add(LoadAvailableGlobalCategories(event.restaurantId));
+        add(LoadRestaurantCategories(event.restaurantId));
+        add(LoadRestaurantExtras(event.restaurantId));
       }
+    } catch (e, stack) {
+      print('!!! ОШИБКА в _onLoadRestaurantData !!!');
+      print('Error: $e');
+      print('Stack:\n$stack');
 
       emit(state.copyWith(
         isLoading: false,
-        restaurantBookedDates: state.tempBookedDates,
-        tempBookedDates: state.tempBookedDates,
+        error: 'Не удалось загрузить данные ресторана: $e',
       ));
-
-      Navigator.of(event.context).pop();
-    } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: 'Ошибка при сохранении: $e',
-      ));
-      print('[v0] ❌ Ошибка при сохранении ресторана: $e');
     }
   }
 
-  Future<void> _onLoadRestaurantExtras(
-      LoadRestaurantExtras event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(isExtrasLoading: true));
+  // ==================== НОВЫЕ ОБРАБОТЧИКИ ДЛЯ КАТЕГОРИЙ ====================
+
+  Future<void> _onLoadAvailableGlobalCategories(
+    LoadAvailableGlobalCategories event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    emit(state.copyWith(isCategoriesLoading: true));
 
     try {
-      final extras =
-          await _restaurantService.getRestaurantExtras(event.restaurantId);
-      emit(state.copyWith(
-        restaurantExtras: extras,
-        isExtrasLoading: false,
-      ));
-    } catch (error) {
-      emit(state.copyWith(
-        error: 'Ошибка загрузки дополнительных опций: $error',
-        isExtrasLoading: false,
-      ));
-      debugPrint('❌ Ошибка загрузки extras: $error');
-    }
-  }
-
-  Future<void> _onAddRestaurantExtra(
-      AddRestaurantExtra event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(isExtrasLoading: true));
-
-    try {
-      final newExtra = RestaurantExtra(
-        restaurantId: state.restaurantId,
-        name: event.name,
-        price: event.price,
-        description: event.description,
+      final globalCategories =
+          await _categoryService.getAvailableGlobalCategories(
+        event.restaurantId,
       );
 
-      final savedExtra = await _restaurantService.addRestaurantExtra(newExtra);
-      final updatedExtras = [...state.restaurantExtras, savedExtra];
-
       emit(state.copyWith(
-        restaurantExtras: updatedExtras,
-        isExtrasLoading: false,
+        availableGlobalCategories: globalCategories,
+        isCategoriesLoading: false,
       ));
     } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка добавления опции: $error',
-        restaurantExtras: state.restaurantExtras,
-        isExtrasLoading: false,
-      ));
-      debugPrint('❌ Ошибка добавления extra: $error');
-    }
-  }
-
-  Future<void> _onUpdateRestaurantExtra(
-      UpdateRestaurantExtra event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(isExtrasLoading: true));
-
-    try {
-      final extraIndex = state.restaurantExtras
-          .indexWhere((extra) => extra.id == event.extraId);
-
-      if (extraIndex != -1) {
-        final currentExtra = state.restaurantExtras[extraIndex];
-        final updatedExtra = currentExtra.copyWith(
-          name: event.name ?? currentExtra.name,
-          price: event.price ?? currentExtra.price,
-          description: event.description ?? currentExtra.description,
-          isActive: event.isActive ?? currentExtra.isActive,
-        );
-
-        final savedExtra =
-            await _restaurantService.updateRestaurantExtra(updatedExtra);
-        final updatedExtras = [...state.restaurantExtras];
-        updatedExtras[extraIndex] = savedExtra;
-
-        emit(state.copyWith(
-          restaurantExtras: updatedExtras,
-          isExtrasLoading: false,
-        ));
-      }
-    } catch (error) {
-      emit(state.copyWith(
-        error: 'Ошибка обновления опции: $error',
-        isExtrasLoading: false,
-      ));
-    }
-  }
-
-  Future<void> _onRemoveRestaurantExtra(
-      RemoveRestaurantExtra event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(isExtrasLoading: true));
-
-    try {
-      await _restaurantService.deleteRestaurantExtra(event.extraId);
-      final updatedExtras = state.restaurantExtras
-          .where((extra) => extra.id != event.extraId)
-          .toList();
-
-      emit(state.copyWith(
-        restaurantExtras: updatedExtras,
-        isExtrasLoading: false,
-      ));
-    } catch (error) {
-      emit(state.copyWith(
-        error: 'Ошибка удаления опции: $error',
-        isExtrasLoading: false,
+        isCategoriesLoading: false,
+        error: 'Ошибка загрузки доступных категорий: $error',
       ));
     }
   }
 
   Future<void> _onLoadRestaurantCategories(
-      LoadRestaurantCategories event, Emitter<RestaurantState> emit) async {
+    LoadRestaurantCategories event,
+    Emitter<RestaurantState> emit,
+  ) async {
     emit(state.copyWith(isCategoriesLoading: true));
 
     try {
       final categories =
-          await _restaurantService.getRestaurantCategories(event.restaurantId);
+          await _categoryService.getRestaurantCategories(event.restaurantId);
+
       emit(state.copyWith(
         restaurantCategories: categories,
         isCategoriesLoading: false,
       ));
     } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка загрузки категорий: $error',
         isCategoriesLoading: false,
+        error: 'Ошибка загрузки категорий: $error',
       ));
-      debugPrint('❌ Ошибка загрузки категорий: $error');
     }
   }
 
-  Future<void> _onAddRestaurantCategory(
-      AddRestaurantCategory event, Emitter<RestaurantState> emit) async {
+  Future<void> _onActivateRestaurantCategory(
+    ActivateRestaurantCategory event,
+    Emitter<RestaurantState> emit,
+  ) async {
     emit(state.copyWith(isCategoriesLoading: true));
 
     try {
-      final newCategory = RestaurantCategory(
-        restaurantId: state.restaurantId,
-        name: event.name,
-        priceRange: event.priceRange,
-        description: event.description,
+      await _categoryService.activateCategory(
+        state.restaurantId,
+        event.globalCategoryId,
+        event.price,
+        event.description,
       );
 
-      final savedCategory =
-          await _restaurantService.addRestaurantCategory(newCategory);
-      final updatedCategories = [...state.restaurantCategories, savedCategory];
+      // Перезагружаем список категорий
+      final categories = await _categoryService.getRestaurantCategories(
+        state.restaurantId,
+      );
 
       emit(state.copyWith(
-        restaurantCategories: updatedCategories,
+        restaurantCategories: categories,
         isCategoriesLoading: false,
       ));
     } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка добавления категории: $error',
-        restaurantCategories: state.restaurantCategories,
+        error: 'Ошибка активации категории: $error',
         isCategoriesLoading: false,
       ));
-      debugPrint('❌ Ошибка добавления категории: $error');
     }
   }
 
   Future<void> _onUpdateRestaurantCategory(
-      UpdateRestaurantCategory event, Emitter<RestaurantState> emit) async {
+    UpdateRestaurantCategory event,
+    Emitter<RestaurantState> emit,
+  ) async {
     emit(state.copyWith(isCategoriesLoading: true));
 
     try {
-      final categoryIndex = state.restaurantCategories
-          .indexWhere((cat) => cat.id == event.categoryId);
+      // Находим текущую категорию
+      final currentCategory = state.restaurantCategories.firstWhere(
+        (c) => c.id == event.categoryId,
+      );
 
-      if (categoryIndex != -1) {
-        final currentCategory = state.restaurantCategories[categoryIndex];
-        final updatedCategory = currentCategory.copyWith(
-          name: event.name ?? currentCategory.name,
-          priceRange: event.priceRange ?? currentCategory.priceRange,
-          description: event.description ?? currentCategory.description,
-          isActive: event.isActive ?? currentCategory.isActive,
-        );
+      // Создаем обновленную категорию
+      final updatedCategory = currentCategory.copyWith(
+        priceRange: event.price,
+        description: event.description,
+        isActive: event.isActive,
+      );
 
-        final savedCategory =
-            await _restaurantService.updateRestaurantCategory(updatedCategory);
-        final updatedCategories = [...state.restaurantCategories];
-        updatedCategories[categoryIndex] = savedCategory;
+      // Обновляем в базе
+      await _categoryService.updateRestaurantCategory(updatedCategory);
 
-        emit(state.copyWith(
-          restaurantCategories: updatedCategories,
-          isCategoriesLoading: false,
-        ));
-      }
+      // Перезагружаем список категорий
+      final categories = await _categoryService.getRestaurantCategories(
+        state.restaurantId,
+      );
+
+      emit(state.copyWith(
+        restaurantCategories: categories,
+        isCategoriesLoading: false,
+      ));
     } catch (error) {
       emit(state.copyWith(
         error: 'Ошибка обновления категории: $error',
@@ -404,47 +288,126 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     }
   }
 
-  Future<void> _onRemoveRestaurantCategory(
-      RemoveRestaurantCategory event, Emitter<RestaurantState> emit) async {
+  Future<void> _onDeactivateRestaurantCategory(
+    DeactivateRestaurantCategory event,
+    Emitter<RestaurantState> emit,
+  ) async {
     emit(state.copyWith(isCategoriesLoading: true));
 
     try {
-      await _restaurantService.deleteRestaurantCategory(event.categoryId);
-      final updatedCategories = state.restaurantCategories
-          .where((cat) => cat.id != event.categoryId)
-          .toList();
+      await _categoryService.deactivateRestaurantCategory(event.categoryId);
+
+      // Перезагружаем список категорий
+      final categories = await _categoryService.getRestaurantCategories(
+        state.restaurantId,
+      );
 
       emit(state.copyWith(
-        restaurantCategories: updatedCategories,
+        restaurantCategories: categories,
         isCategoriesLoading: false,
       ));
     } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка удаления категории: $error',
+        error: 'Ошибка деактивации категории: $error',
         isCategoriesLoading: false,
       ));
     }
   }
 
-  Future<void> _onLoadBookedDates(
-      LoadBookedDates event, Emitter<RestaurantState> emit) async {
-    emit(state.copyWith(isLoading: true));
+  // ==================== ОБРАБОТЧИКИ ДЛЯ EXTRAS ====================
+
+  Future<void> _onLoadRestaurantExtras(
+    LoadRestaurantExtras event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    emit(state.copyWith(isExtrasLoading: true));
 
     try {
-      final restaurantBookedDates =
-          await _restaurantService.getRestaurantBookedDates(event.restaurantId);
-      final visibleBookedDates =
-          await _restaurantService.getBookedDates(event.restaurantId);
+      final extras =
+          await _restaurantService.getRestaurantExtras(event.restaurantId);
 
       emit(state.copyWith(
-        restaurantBookedDates: restaurantBookedDates,
-        visibleBookedDates: visibleBookedDates,
-        isLoading: false,
+        restaurantExtras: extras,
+        isExtrasLoading: false,
       ));
     } catch (error) {
       emit(state.copyWith(
-        isLoading: false,
+        isExtrasLoading: false,
+        error: 'Ошибка загрузки дополнительных опций',
       ));
+    }
+  }
+
+  Future<void> _onAddRestaurantExtra(
+    AddRestaurantExtra event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    try {
+      final extra = RestaurantExtra(
+        restaurantId: state.restaurantId,
+        name: event.name,
+        price: event.price,
+        description: event.description,
+      );
+
+      await _restaurantService.addRestaurantExtra(extra);
+      add(LoadRestaurantExtras(state.restaurantId));
+    } catch (error) {
+      emit(state.copyWith(error: 'Ошибка добавления дополнительной опции'));
+    }
+  }
+
+  Future<void> _onUpdateRestaurantExtra(
+    UpdateRestaurantExtra event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    try {
+      final existingExtra = state.restaurantExtras.firstWhere(
+        (e) => e.id == event.extraId,
+      );
+
+      final updatedExtra = existingExtra.copyWith(
+        name: event.name,
+        price: event.price,
+        description: event.description,
+        isActive: event.isActive,
+      );
+
+      await _restaurantService.updateRestaurantExtra(updatedExtra);
+      add(LoadRestaurantExtras(state.restaurantId));
+    } catch (error) {
+      emit(state.copyWith(error: 'Ошибка обновления дополнительной опции'));
+    }
+  }
+
+  Future<void> _onRemoveRestaurantExtra(
+    RemoveRestaurantExtra event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    try {
+      await _restaurantService.deleteRestaurantExtra(event.extraId);
+      add(LoadRestaurantExtras(state.restaurantId));
+    } catch (error) {
+      emit(state.copyWith(error: 'Ошибка удаления дополнительной опции'));
+    }
+  }
+
+  // ==================== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ====================
+
+  Future<void> _onLoadBookedDates(
+    LoadBookedDates event,
+    Emitter<RestaurantState> emit,
+  ) async {
+    try {
+      final bookedDates =
+          await _restaurantService.getBookedDates(event.restaurantId);
+
+      emit(state.copyWith(
+        visibleBookedDates: bookedDates,
+        restaurantBookedDates: state.restaurantBookedDates,
+      ));
+    } catch (error) {
+      emit(state.copyWith(error: 'Ошибка загрузки дат'));
     }
   }
 
@@ -459,6 +422,17 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
 
   void _onUpdateLocation(UpdateLocation event, Emitter<RestaurantState> emit) {
     emit(state.copyWith(location: event.location));
+  }
+
+  void _onUpdatePhone(UpdatePhone event, Emitter<RestaurantState> emit) {
+    // Разделяем строку на массив телефонов
+    final phones = event.phone
+        .split('\n')
+        .map((p) => p.trim())
+        .where((p) => p.isNotEmpty)
+        .toList();
+
+    emit(state.copyWith(phones: phones));
   }
 
   void _onUpdateWorkingHours(
@@ -480,6 +454,59 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     emit(state.copyWith(category: event.category));
   }
 
+  Future<void> _onAddPhoto(
+      AddPhoto event, Emitter<RestaurantState> emit) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+      if (image != null) {
+        emit(state.copyWith(isLoading: true));
+
+        // Принудительно обновляем токен перед загрузкой
+        final currentUser = _auth.currentUser;
+        if (currentUser == null) {
+          emit(state.copyWith(
+            error: 'Пользователь не авторизован',
+            isLoading: false,
+          ));
+          return;
+        }
+        await currentUser.getIdToken(true);
+
+        // Загружаем в Firebase Storage (путь: restaurants/{id}/{timestamp}.jpg)
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final ref = _storage
+            .ref()
+            .child('restaurants')
+            .child(event.restaurantId)
+            .child(fileName);
+
+        await ref.putFile(File(image.path));
+        final downloadUrl = await ref.getDownloadURL();
+
+        final updatedPhotos = List<String>.from(state.photoUrls)
+          ..add(downloadUrl);
+
+        emit(state.copyWith(
+          photoUrls: updatedPhotos,
+          isLoading: false,
+        ));
+      }
+    } catch (error) {
+      emit(state.copyWith(
+        error: 'Ошибка загрузки фото: $error',
+        isLoading: false,
+      ));
+    }
+  }
+
+  void _onRemovePhoto(RemovePhoto event, Emitter<RestaurantState> emit) {
+    final updatedPhotos = List<String>.from(state.photoUrls)
+      ..removeAt(event.index);
+    emit(state.copyWith(photoUrls: updatedPhotos));
+  }
+
   void _onUpdateTempBookedDates(
       UpdateTempBookedDates event, Emitter<RestaurantState> emit) {
     emit(state.copyWith(tempBookedDates: event.dates));
@@ -487,220 +514,64 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
 
   void _onUpdateBookedDates(
       UpdateBookedDates event, Emitter<RestaurantState> emit) {
-    emit(state.copyWith(tempBookedDates: event.dates));
+    emit(state.copyWith(restaurantBookedDates: event.dates));
   }
 
-  String _getMimeType(String extension) {
-    switch (extension) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'webp':
-        return 'image/webp';
-      default:
-        return 'image/jpeg';
+  Future<void> _onSaveRestaurant(
+      SaveRestaurant event, Emitter<RestaurantState> emit) async {
+    if (state.name.isEmpty || state.location.isEmpty) {
+      emit(state.copyWith(error: 'Заполните обязательные поля'));
+      return;
     }
-  }
 
-  Future<String?> _pickImage(XFile pickedFile, String restaurantId) async {
+    emit(state.copyWith(isLoading: true));
+
     try {
-      final bytes = await pickedFile.readAsBytes();
-
-      final ext = pickedFile.name.split('.').last.toLowerCase();
-      final validExt =
-          ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext) ? ext : 'jpg';
-
-      final uniqueFileName =
-          'restaurant_${restaurantId}_${DateTime.now().millisecondsSinceEpoch}.$validExt';
-      final pathInBucket = 'image_url/$uniqueFileName';
-
-      final uploadResponse =
-          await _supabase.storage.from('restaurants').uploadBinary(
-                pathInBucket,
-                bytes,
-                fileOptions: FileOptions(
-                  contentType: _getMimeType(validExt),
-                  upsert: true,
-                ),
-              );
-
-      if (uploadResponse == "") {
-        final publicUrl =
-            _supabase.storage.from('restaurants').getPublicUrl(pathInBucket);
-        print('✅ Изображение загружено: $publicUrl');
-        return publicUrl;
-      } else {
-        print(
-            '⚠️ uploadBinary вернул путь (возможно уже существует): $uploadResponse');
-        final fallbackUrl =
-            _supabase.storage.from('restaurants').getPublicUrl(pathInBucket);
-        return fallbackUrl;
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw Exception('Пользователь не авторизован');
       }
-    } catch (e, stack) {
-      print('❌ Ошибка в _pickImage: $e\n$stack');
-      return null;
-    }
-  }
 
-  Future<void> _updateRestaurantPhotos(
-      String restaurantId, List<String> photoUrls) async {
-    try {
-      await _supabase.from('restaurants').update({
-        'photos': photoUrls,
-        'image_url': photoUrls.isNotEmpty ? photoUrls.first : null,
-      }).eq('id', restaurantId);
-      print('✅ Фотографии обновлены в таблице restaurants');
-    } catch (e) {
-      print('❌ Ошибка обновления фотографий: $e');
-    }
-  }
+      // Объединяем массив телефонов в строку
+      final phoneString = state.phones.join('\n');
 
-  Future<void> _onAddPhoto(
-      AddPhoto event, Emitter<RestaurantState> emit) async {
-    try {
-      final pickedFile = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
+      final restaurant = Restaurant(
+        name: state.name,
+        description: state.description,
+        location: state.location,
+        phone: phoneString,
+        workingHours: state.workingHours,
+        ownerId: currentUser.uid,
+        photos: state.photoUrls,
+        bookedDates: state.restaurantBookedDates,
+        rating: state.rating,
+        sumPeople: int.tryParse(state.sumPeople),
       );
 
-      if (pickedFile == null) return;
+      await _restaurantService.saveRestaurant(
+        restaurant,
+        existingId: state.isEditing ? state.restaurantId : null,
+        // При создании передаём заранее сгенерированный ID,
+        // чтобы фото, загруженные до сохранения, уже лежали в правильном пути
+        newId: state.isEditing ? null : state.restaurantId,
+      );
 
-      emit(state.copyWith(isLoading: true));
+      emit(state.copyWith(isLoading: false, isSuccess: true));
 
-      final imageUrl =
-          await _pickImage(pickedFile, event.restaurantId.toString());
+      ScaffoldMessenger.of(event.context).showSnackBar(
+        SnackBar(
+          content: Text(state.isEditing
+              ? 'Ресторан успешно обновлен!'
+              : 'Ресторан успешно добавлен!'),
+        ),
+      );
 
-      if (imageUrl != null) {
-        final updatedPhotoUrls = List<String>.from(state.photoUrls)
-          ..add(imageUrl);
-        emit(state.copyWith(
-          photoUrls: updatedPhotoUrls,
-          isLoading: false,
-        ));
-
-        if (state.isEditing) {
-          await _updateRestaurantPhotos(
-              event.restaurantId.toString(), updatedPhotoUrls);
-        }
-      } else {
-        emit(state.copyWith(
-          error: 'Ошибка при загрузке изображения',
-          isLoading: false,
-        ));
-      }
-    } catch (e, stack) {
-      print('❌ Ошибка при загрузке фото: $e\n$stack');
+      Navigator.of(event.context).pop();
+    } catch (error) {
       emit(state.copyWith(
-        error: 'Ошибка загрузки: ${e.toString()}',
         isLoading: false,
+        error: 'Ошибка сохранения ресторана: $error',
       ));
-    }
-  }
-
-  String? _extractFilePathFromUrl(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments;
-
-      final restaurantsIndex = pathSegments.indexOf('restaurants');
-      if (restaurantsIndex != -1 &&
-          restaurantsIndex < pathSegments.length - 1) {
-        final filePath = pathSegments.sublist(restaurantsIndex + 1).join('/');
-        return filePath;
-      }
-      return null;
-    } catch (e) {
-      print('❌ Ошибка извлечения пути из URL: $e');
-      return null;
-    }
-  }
-
-  Future<bool> _deleteImageFromStorage(String imageUrl) async {
-    try {
-      final filePath = _extractFilePathFromUrl(imageUrl);
-      if (filePath == null) {
-        print('❌ Не удалось извлечь путь файла из URL: $imageUrl');
-        return false;
-      }
-
-      await _supabase.storage.from('restaurants').remove([filePath]);
-      print('✅ Файл удален из Storage: $filePath');
-      return true;
-    } catch (e) {
-      print('❌ Ошибка удаления файла из Storage: $e');
-      return false;
-    }
-  }
-
-  Future<void> _onRemovePhoto(
-      RemovePhoto event, Emitter<RestaurantState> emit) async {
-    final updatedPhotoUrls = List<String>.from(state.photoUrls);
-    if (event.index >= 0 && event.index < updatedPhotoUrls.length) {
-      final imageUrlToDelete = updatedPhotoUrls[event.index];
-
-      emit(state.copyWith(isLoading: true));
-      final deletedFromStorage =
-          await _deleteImageFromStorage(imageUrlToDelete);
-
-      if (deletedFromStorage) {
-        updatedPhotoUrls.removeAt(event.index);
-        emit(state.copyWith(
-          photoUrls: updatedPhotoUrls,
-          isLoading: false,
-        ));
-
-        if (state.isEditing) {
-          await _updateRestaurantPhotos(
-              state.restaurantId.toString(), updatedPhotoUrls);
-        }
-      } else {
-        emit(state.copyWith(
-          error: 'Ошибка при удалении изображения из хранилища',
-          isLoading: false,
-        ));
-      }
-    }
-  }
-
-  Future<void> _deleteBookingsForRemovedDates(
-    int restaurantId,
-    List<DateTime> oldDates,
-    List<DateTime> newDates,
-  ) async {
-    final removedDates =
-        oldDates.where((date) => !newDates.contains(date)).toList();
-
-    if (removedDates.isEmpty) return;
-
-    print('[v0] Удаляем записи для дат: $removedDates');
-
-    for (final date in removedDates) {
-      try {
-        final response = await _supabase
-            .from('bookings')
-            .select('id')
-            .eq('restaurant_id', restaurantId)
-            .gte('booking_time', date.toIso8601String().split('T')[0])
-            .lt(
-                'booking_time',
-                DateTime(date.year, date.month, date.day + 1)
-                    .toIso8601String()
-                    .split('T')[0]);
-
-        final bookings = response as List<dynamic>;
-
-        for (final booking in bookings) {
-          await _supabase.from('bookings').delete().eq('id', booking['id']);
-        }
-
-        print('[v0] Удалено ${bookings.length} записей для даты $date');
-      } catch (e) {
-        print('[v0] Ошибка при удалении записей для даты $date: $e');
-      }
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../../../../data/models/global_category.dart';
 import '../../../../../../data/models/restaurant_category.dart';
 import '../../../../../../data/models/restaurant_extra.dart';
 
@@ -6,8 +7,7 @@ class RestaurantState extends Equatable {
   final String name;
   final String description;
   final String location;
-  final List<String>
-      phones; // <CHANGE> Изменено с String phone на List<String> phones
+  final List<String> phones;
   final String workingHours;
   final String priceRange;
   final String sumPeople;
@@ -20,10 +20,17 @@ class RestaurantState extends Equatable {
   final String? error;
   final bool isSuccess;
   final double rating;
-  final int restaurantId;
+  final String restaurantId;
   final List<DateTime> tempBookedDates;
-  final List<RestaurantCategory> restaurantCategories;
+
+  // Категории
+  final List<GlobalCategory>
+      availableGlobalCategories; // НОВОЕ: доступные глобальные категории
+  final List<RestaurantCategory>
+      restaurantCategories; // Активированные категории ресторана
   final bool isCategoriesLoading;
+
+  // Дополнительные опции
   final List<RestaurantExtra> restaurantExtras;
   final bool isExtrasLoading;
 
@@ -31,7 +38,7 @@ class RestaurantState extends Equatable {
     this.name = '',
     this.description = '',
     this.location = '',
-    this.phones = const [], // <CHANGE> Изменено значение по умолчанию
+    this.phones = const [],
     this.workingHours = '',
     this.priceRange = '',
     this.sumPeople = '',
@@ -44,8 +51,9 @@ class RestaurantState extends Equatable {
     this.error,
     this.isSuccess = false,
     this.rating = 5.0,
-    this.restaurantId = 0,
+    this.restaurantId = '',
     this.tempBookedDates = const [],
+    this.availableGlobalCategories = const [], // НОВОЕ
     this.restaurantCategories = const [],
     this.isCategoriesLoading = false,
     this.restaurantExtras = const [],
@@ -56,7 +64,7 @@ class RestaurantState extends Equatable {
     String? name,
     String? description,
     String? location,
-    List<String>? phones, // <CHANGE> Изменено с String? phone
+    List<String>? phones,
     String? workingHours,
     String? priceRange,
     String? sumPeople,
@@ -69,8 +77,9 @@ class RestaurantState extends Equatable {
     String? error,
     bool? isSuccess,
     double? rating,
-    int? restaurantId,
+    String? restaurantId,
     List<DateTime>? tempBookedDates,
+    List<GlobalCategory>? availableGlobalCategories, // НОВОЕ
     List<RestaurantCategory>? restaurantCategories,
     bool? isCategoriesLoading,
     List<RestaurantExtra>? restaurantExtras,
@@ -80,7 +89,7 @@ class RestaurantState extends Equatable {
       name: name ?? this.name,
       description: description ?? this.description,
       location: location ?? this.location,
-      phones: phones ?? this.phones, // <CHANGE> Изменено
+      phones: phones ?? this.phones,
       workingHours: workingHours ?? this.workingHours,
       priceRange: priceRange ?? this.priceRange,
       sumPeople: sumPeople ?? this.sumPeople,
@@ -96,6 +105,8 @@ class RestaurantState extends Equatable {
       rating: rating ?? this.rating,
       restaurantId: restaurantId ?? this.restaurantId,
       tempBookedDates: tempBookedDates ?? this.tempBookedDates,
+      availableGlobalCategories:
+          availableGlobalCategories ?? this.availableGlobalCategories, // НОВОЕ
       restaurantCategories: restaurantCategories ?? this.restaurantCategories,
       isCategoriesLoading: isCategoriesLoading ?? this.isCategoriesLoading,
       restaurantExtras: restaurantExtras ?? this.restaurantExtras,
@@ -108,7 +119,7 @@ class RestaurantState extends Equatable {
         name,
         description,
         location,
-        phones, // <CHANGE> Изменено с phone
+        phones,
         workingHours,
         priceRange,
         sumPeople,
@@ -123,6 +134,7 @@ class RestaurantState extends Equatable {
         rating,
         restaurantId,
         tempBookedDates,
+        availableGlobalCategories, // НОВОЕ
         restaurantCategories,
         isCategoriesLoading,
         restaurantExtras,

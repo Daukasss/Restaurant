@@ -1,11 +1,16 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:restauran/data/services/abstract/abstract_auth_services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthService implements AbstractAuthServices {
-  final SupabaseClient _supabase;
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
-  AuthService(this._supabase);
+  // Храним verificationId для OTP
+  String? _verificationId;
+
+  AuthService(this._auth, this._firestore);
 
   @override
   Future<void> sendOtp(String phone) async {
@@ -13,13 +18,29 @@ class AuthService implements AbstractAuthServices {
       // Форматируем номер телефона
       final formattedPhone = _formatPhoneNumber(phone);
 
-      // Отправляем OTP на номер телефона
-      await _supabase.auth.signInWithOtp(
-        phone: formattedPhone,
+      await _auth.verifyPhoneNumber(
+        phoneNumber: formattedPhone,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Автоматическая верификация (на Android)
+          debugPrint('Автоматическая верификация завершена');
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          debugPrint('Ошибка верификации: ${e.message}');
+          throw Exception('Ошибка отправки кода: ${e.message}');
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          // Сохраняем verificationId для последующей проверки
+          _verificationId = verificationId;
+          debugPrint('Код отправлен, verificationId: $verificationId');
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+          debugPrint('Таймаут автоматического получения');
+        },
+        timeout: const Duration(seconds: 60),
       );
-    } on AuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       debugPrint('Ошибка отправки кода: ${e.message}');
-
       throw Exception('Ошибка отправки кода: ${e.message}');
     } catch (e) {
       debugPrint('Ошибка отправки кода: $e');
@@ -34,62 +55,85 @@ class AuthService implements AbstractAuthServices {
       // Форматируем номер телефона
       final formattedPhone = _formatPhoneNumber(phone);
 
-      // Проверяем, существует ли уже пользователь с таким телефоном
-      final existingUser = await _supabase
-          .from('profiles')
-          .select('phone')
-          .eq('phone', formattedPhone)
-          .maybeSingle();
-
-      if (existingUser != null) {
-        throw Exception('Пользователь с таким номером телефона уже существует');
+      if (_verificationId == null) {
+        throw Exception('Сначала отправьте код подтверждения');
       }
 
-      // Проверяем OTP
-      final otpResponse = await _supabase.auth.verifyOTP(
-        phone: formattedPhone,
-        token: token,
-        type: OtpType.sms,
+      // Создаем credentials с OTP кодом
+      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: token,
       );
 
-      if (otpResponse.user == null) {
+      // Входим с помощью phone credential
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      if (userCredential.user == null) {
         throw Exception('Неверный код подтверждения');
       }
 
-      // Создаем пользователя с паролем
-      // Примечание: Supabase не позволяет напрямую установить пароль при верификации OTP
-      // Поэтому нам нужно сначала верифицировать OTP, а затем обновить пароль
+      final user = userCredential.user!;
 
-      // Обновляем пароль пользователя
-      await _supabase.auth.updateUser(
-        UserAttributes(
-          password: password,
-        ),
-      );
+      // ✅ ИСПРАВЛЕНИЕ: Проверяем существование профиля ПОСЛЕ аутентификации
+      final existingProfile =
+          await _firestore.collection('profiles').doc(user.uid).get();
 
-      // Создаем профиль пользователя
+      if (existingProfile.exists) {
+        // Профиль уже существует, возвращаем данные
+        final profileData = existingProfile.data()!;
+        return {
+          'user': {
+            'id': user.uid,
+            'name': profileData['name'],
+            'phone': _displayPhoneNumber(profileData['phone']),
+            'role': profileData['role'],
+          }
+        };
+      }
+
+      // Создаем временный email на основе номера телефона
+      final tempEmail =
+          '${formattedPhone.replaceAll('+', '').replaceAll(' ', '')}@phone.auth';
+
       try {
-        await _supabase.from('profiles').insert({
-          'id': otpResponse.user!.id,
+        // Связываем аккаунт с email/password
+        final emailCredential = EmailAuthProvider.credential(
+          email: tempEmail,
+          password: password,
+        );
+        await user.linkWithCredential(emailCredential);
+      } catch (linkError) {
+        debugPrint('Ошибка связывания с email: $linkError');
+        // Продолжаем даже если не удалось связать
+      }
+
+      // Создаем профиль пользователя в Firestore
+      try {
+        await _firestore.collection('profiles').doc(user.uid).set({
+          'id': user.uid,
           'name': name,
           'phone': formattedPhone,
+          'email': tempEmail,
           'role': 'user',
-          'created_at': DateTime.now().toIso8601String(),
+          'created_at': FieldValue.serverTimestamp(),
         });
       } catch (profileError) {
         debugPrint('Ошибка создания профиля: $profileError');
+        // Удаляем пользователя если не удалось создать профиль
+        await user.delete();
         throw Exception('Ошибка создания профиля: $profileError');
       }
 
       return {
         'user': {
-          'id': otpResponse.user!.id,
+          'id': user.uid,
           'name': name,
           'phone': _displayPhoneNumber(formattedPhone),
           'role': 'user',
         }
       };
-    } on AuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
       debugPrint('Ошибка регистрации: ${e.message}');
       throw Exception('Ошибка регистрации: ${e.message}');
     } catch (e) {
@@ -105,74 +149,91 @@ class AuthService implements AbstractAuthServices {
       // Форматируем номер телефона
       final formattedPhone = _formatPhoneNumber(phone);
 
-      // Входим с телефоном и паролем
-      final response = await _supabase.auth.signInWithPassword(
-        phone: formattedPhone,
+      // Создаем email на основе номера телефона
+      final tempEmail =
+          '${formattedPhone.replaceAll('+', '').replaceAll(' ', '')}@phone.auth';
+
+      // Входим с email и паролем
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
+        email: tempEmail,
         password: password,
       );
 
-      if (response.user == null) {
+      if (userCredential.user == null) {
         throw Exception('Неверный телефон или пароль');
       }
 
-      // Получаем профиль пользователя
-      final profileResponse = await _supabase
-          .from("profiles")
-          .select('id, name, phone, created_at, role')
-          .eq('id', response.user!.id)
-          .single();
+      final user = userCredential.user!;
+
+      // Получаем профиль пользователя из Firestore
+      final profileDoc =
+          await _firestore.collection('profiles').doc(user.uid).get();
+
+      if (!profileDoc.exists) {
+        throw Exception('Профиль пользователя не найден');
+      }
+
+      final profileData = profileDoc.data()!;
 
       return {
         'user': {
-          'id': response.user!.id,
-          'name': profileResponse['name'],
-          'phone': _displayPhoneNumber(profileResponse['phone']),
-          'role': profileResponse['role'],
+          'id': user.uid,
+          'name': profileData['name'],
+          'phone': _displayPhoneNumber(profileData['phone']),
+          'role': profileData['role'],
         }
       };
-    } on AuthException catch (e) {
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Ошибка входа: ${e.message}');
       throw Exception('Ошибка входа: ${e.message}');
     } catch (e) {
+      debugPrint('Ошибка входа: $e');
       throw Exception('Ошибка входа: $e');
     }
   }
 
   @override
   Future<void> logout() async {
-    await _supabase.auth.signOut();
+    await _auth.signOut();
   }
 
   @override
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
-      final user = _supabase.auth.currentUser;
+      final user = _auth.currentUser;
 
       if (user == null) {
         return null;
       }
 
-      final profileResponse = await _supabase
-          .from("profiles")
-          .select('id, name, phone, created_at, role')
-          .eq('id', user.id)
-          .single();
+      // Получаем профиль из Firestore
+      final profileDoc =
+          await _firestore.collection('profiles').doc(user.uid).get();
+
+      if (!profileDoc.exists) {
+        return null;
+      }
+
+      final profileData = profileDoc.data()!;
 
       return {
         'user': {
-          'id': user.id,
-          'name': profileResponse['name'],
-          'phone': _displayPhoneNumber(profileResponse['phone']),
-          'role': profileResponse['role'],
+          'id': user.uid,
+          'name': profileData['name'],
+          'phone': _displayPhoneNumber(profileData['phone']),
+          'role': profileData['role'],
         }
       };
     } catch (e) {
+      debugPrint('Ошибка получения текущего пользователя: $e');
       return null;
     }
   }
 
   @override
   Future<bool> isAuthenticated() async {
-    return _supabase.auth.currentUser != null;
+    return _auth.currentUser != null;
   }
 
   // Вспомогательный метод для форматирования номера телефона

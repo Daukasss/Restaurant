@@ -41,48 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDcioJoSOzMd2rx0eZYvs7nnptjQhXDk3c',
-    appId: '1:895420289220:web:c664d44efe43f97d62b991',
-    messagingSenderId: '895420289220',
-    projectId: 'restaurant-app-a576e',
-    authDomain: 'restaurant-app-a576e.firebaseapp.com',
-    storageBucket: 'restaurant-app-a576e.firebasestorage.app',
-    measurementId: 'G-RSNPSGT1X7',
-  );
+      apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
+      authDomain: "aq-toi.firebaseapp.com",
+      projectId: "aq-toi",
+      storageBucket: "aq-toi.firebasestorage.app",
+      messagingSenderId: "745460234210",
+      appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
+      measurementId: "G-JMCNSK71E6");
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDZTartpyeI0QcFOQQK3EfdE-seLDsgWow',
-    appId: '1:895420289220:android:e0dd95115794d64762b991',
-    messagingSenderId: '895420289220',
-    projectId: 'restaurant-app-a576e',
-    storageBucket: 'restaurant-app-a576e.firebasestorage.app',
+    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
+    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
+    messagingSenderId: "745460234210",
+    projectId: "aq-toi",
+    storageBucket: "aq-toi.firebasestorage.app",
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCKLPOn5E0xOUdSFY_6nzF8__ZXWlurYdM',
-    appId: '1:895420289220:ios:06d97b28306ce8d662b991',
-    messagingSenderId: '895420289220',
-    projectId: 'restaurant-app-a576e',
-    storageBucket: 'restaurant-app-a576e.firebasestorage.app',
+    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
+    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
+    messagingSenderId: "745460234210",
+    projectId: "aq-toi",
+    storageBucket: "aq-toi.firebasestorage.app",
     iosBundleId: 'com.blood.moon',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCKLPOn5E0xOUdSFY_6nzF8__ZXWlurYdM',
-    appId: '1:895420289220:ios:06d97b28306ce8d662b991',
-    messagingSenderId: '895420289220',
-    projectId: 'restaurant-app-a576e',
-    storageBucket: 'restaurant-app-a576e.firebasestorage.app',
+    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
+    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
+    messagingSenderId: "745460234210",
+    projectId: "aq-toi",
+    storageBucket: "aq-toi.firebasestorage.app",
     iosBundleId: 'com.blood.moon',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyDcioJoSOzMd2rx0eZYvs7nnptjQhXDk3c',
-    appId: '1:895420289220:web:82bd914eb65129c962b991',
-    messagingSenderId: '895420289220',
-    projectId: 'restaurant-app-a576e',
-    authDomain: 'restaurant-app-a576e.firebaseapp.com',
-    storageBucket: 'restaurant-app-a576e.firebasestorage.app',
-    measurementId: 'G-PM7GN2C2JK',
-  );
+      apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
+      appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
+      messagingSenderId: "745460234210",
+      projectId: "aq-toi",
+      authDomain: "aq-toi.firebaseapp.com",
+      storageBucket: "aq-toi.firebasestorage.app",
+      measurementId: "G-JMCNSK71E6");
 }

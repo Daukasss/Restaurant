@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/data/services/abstract/abstract_menu_service.dart';
 
-import '../../../../../../data/services/service_lacator.dart';
+import '../../../../../../data/services/service_locator.dart';
 import 'booking_confirmation_event.dart';
 import 'booking_confirmation_state.dart';
 

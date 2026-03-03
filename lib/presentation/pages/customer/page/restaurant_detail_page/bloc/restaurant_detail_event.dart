@@ -8,7 +8,7 @@ abstract class RestaurantDetailEvent extends Equatable {
 }
 
 class FetchRestaurantData extends RestaurantDetailEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const FetchRestaurantData(this.restaurantId);
 
@@ -17,7 +17,7 @@ class FetchRestaurantData extends RestaurantDetailEvent {
 }
 
 class ToggleFavorite extends RestaurantDetailEvent {
-  final int restaurantId;
+  final String restaurantId;
 
   const ToggleFavorite(this.restaurantId);
 

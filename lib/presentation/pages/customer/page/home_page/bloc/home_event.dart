@@ -2,14 +2,18 @@ abstract class HomeEvent {}
 
 class LoadRestaurants extends HomeEvent {}
 
-class ApplyFilters extends HomeEvent {
-  // final String? category;
+class ApplySearchQuery extends HomeEvent {
   final String searchQuery;
+  ApplySearchQuery(this.searchQuery);
+}
 
-  ApplyFilters({
-    // this.category,
-    this.searchQuery = '',
+class ApplyCategoryAndDateFilter extends HomeEvent {
+  final String? globalCategoryId; // null = все категории
+  final DateTime? selectedDate; // null = без фильтра по дате
+  ApplyCategoryAndDateFilter({
+    this.globalCategoryId,
+    this.selectedDate,
   });
 }
 
-class ResetFilters extends HomeEvent {}
+class ResetAllFilters extends HomeEvent {}

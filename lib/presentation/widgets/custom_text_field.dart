@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class CustomTextField extends StatelessWidget {
+class CustomTextField extends StatefulWidget {
   final TextEditingController? controller;
   final String hintText;
   final IconData? prefixIcon;
@@ -12,10 +12,8 @@ class CustomTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool enabled;
   final bool isPhoneNumber;
-  final bool isMultiplePhones; // Added parameter for multiple phones
-  final int?
-      maxLength; // Added maxLength parameter for flexible character limit
-
+  final bool isMultiplePhones;
+  final int? maxLength;
   const CustomTextField({
     super.key,
     this.controller,
@@ -33,52 +31,64 @@ class CustomTextField extends StatelessWidget {
   });
 
   @override
+  State<CustomTextField> createState() => _CustomTextFieldState();
+}
+
+class _CustomTextFieldState extends State<CustomTextField> {
+  @override
   Widget build(BuildContext context) {
-    final effectiveKeyboardType = keyboardType ??
-        (isPhoneNumber
+    final effectiveKeyboardType = widget.keyboardType ??
+        (widget.isPhoneNumber
             ? TextInputType.phone
-            : (obscureText || isMultiplePhones)
+            : (widget.obscureText || widget.isMultiplePhones)
                 ? TextInputType.text
                 : TextInputType.multiline);
 
-    final effectiveTextInputAction = (isPhoneNumber || obscureText)
-        ? TextInputAction.done
-        : isMultiplePhones
-            ? TextInputAction.newline
-            : TextInputAction.newline;
+    final effectiveTextInputAction =
+        (widget.isPhoneNumber || widget.obscureText)
+            ? TextInputAction.done
+            : widget.isMultiplePhones
+                ? TextInputAction.newline
+                : TextInputAction.newline;
 
     List<TextInputFormatter>? effectiveInputFormatters;
 
-    if (isPhoneNumber && !isMultiplePhones) {
+    if (widget.isPhoneNumber && !widget.isMultiplePhones) {
       // Phone number formatting with fixed 17 character limit
       effectiveInputFormatters = [
         FilteringTextInputFormatter.allow(RegExp(r'[\d+\s]')),
         LengthLimitingTextInputFormatter(17),
         PhoneNumberFormatter(),
       ];
-    } else if (maxLength != null) {
+    } else if (widget.maxLength != null) {
       // Custom maxLength limit
       effectiveInputFormatters = [
-        LengthLimitingTextInputFormatter(maxLength),
+        LengthLimitingTextInputFormatter(widget.maxLength),
       ];
     }
     // If both are null/false, no formatters applied = no limit
 
     return TextFormField(
-      controller: controller,
-      initialValue: controller == null ? initialValue : null,
+      controller: widget.controller,
+      // initialValue: widget.controller == null ? widget.initialValue : null,
       keyboardType: effectiveKeyboardType,
       textInputAction: effectiveTextInputAction,
-      obscureText: obscureText,
-      enabled: enabled,
-      onChanged: onChanged,
+      obscureText: widget.obscureText,
+      enabled: widget.enabled,
+      onChanged: widget.onChanged,
       inputFormatters: effectiveInputFormatters,
-      minLines: (!obscureText && !isPhoneNumber) || isMultiplePhones ? 1 : null,
-      maxLines: (!obscureText && !isPhoneNumber) || isMultiplePhones ? null : 1,
+      minLines: (!widget.obscureText && !widget.isPhoneNumber) ||
+              widget.isMultiplePhones
+          ? 1
+          : null,
+      maxLines: (!widget.obscureText && !widget.isPhoneNumber) ||
+              widget.isMultiplePhones
+          ? null
+          : 1,
       decoration: InputDecoration(
-        hintText: hintText,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
-        suffixIcon: suffixIcon,
+        hintText: widget.hintText,
+        prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
+        suffixIcon: widget.suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),

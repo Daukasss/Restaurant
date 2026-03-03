@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:restauran/data/services/abstract/abstract_auth_services.dart';
+import 'package:restauran/data/services/service_locator.dart';
 import 'package:restauran/presentation/pages/auth/pages/register_page/view/register_page.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import '../../../../../widgets/custom_text_field.dart';

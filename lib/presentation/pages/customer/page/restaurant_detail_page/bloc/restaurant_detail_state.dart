@@ -10,9 +10,9 @@ class RestaurantDetailState extends Equatable {
   final String? error;
   final Map<String, List<Map<String, dynamic>>> categorizedMenuItems;
   final List<Map<String, dynamic>> categories;
-  final Map<int, List<Map<String, dynamic>>> menuItemsByCategory;
+  final Map<String, List<Map<String, dynamic>>> menuItemsByCategory;
   final List<RestaurantCategory> restaurantCategories;
-  final Map<int, Map<String, dynamic>> menuByRestaurantCategory;
+  final Map<String, Map<String, dynamic>> menuByRestaurantCategory;
 
   const RestaurantDetailState({
     this.restaurant,
@@ -37,9 +37,9 @@ class RestaurantDetailState extends Equatable {
     String? error,
     Map<String, List<Map<String, dynamic>>>? categorizedMenuItems,
     List<Map<String, dynamic>>? categories,
-    Map<int, List<Map<String, dynamic>>>? menuItemsByCategory,
+    Map<String, List<Map<String, dynamic>>>? menuItemsByCategory,
     List<RestaurantCategory>? restaurantCategories,
-    Map<int, Map<String, dynamic>>? menuByRestaurantCategory,
+    Map<String, Map<String, dynamic>>? menuByRestaurantCategory,
   }) {
     return RestaurantDetailState(
       restaurant: restaurant ?? this.restaurant,

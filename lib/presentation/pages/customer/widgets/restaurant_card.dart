@@ -5,7 +5,7 @@ class RestaurantCard extends StatelessWidget {
   final String imageUrl;
   final double rating;
   // final String category;
-  final String price;
+  // final String price;
   final String location;
   final VoidCallback onTap;
 
@@ -17,7 +17,7 @@ class RestaurantCard extends StatelessWidget {
     // required this.category,
     required this.location,
     required this.onTap,
-    required this.price,
+    // required this.price,
   });
 
   @override
