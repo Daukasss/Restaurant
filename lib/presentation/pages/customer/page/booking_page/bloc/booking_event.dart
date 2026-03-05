@@ -34,13 +34,15 @@ class LoadRestaurantCategoriesEvent extends BookingEvent {
 }
 
 /// ИЗМЕНЕНО: добавлен restaurantId чтобы сразу загрузить недоступные даты
+/// [excludeBookingId] — при редактировании передать id текущей брони
 class SelectRestaurantCategoryEvent extends BookingEvent {
   final String categoryId;
   final String restaurantId;
+  final String? excludeBookingId;
   const SelectRestaurantCategoryEvent(this.categoryId,
-      {required this.restaurantId});
+      {required this.restaurantId, this.excludeBookingId});
   @override
-  List<Object?> get props => [categoryId, restaurantId];
+  List<Object?> get props => [categoryId, restaurantId, excludeBookingId];
 }
 
 class LoadMenuCategoriesEvent extends BookingEvent {
@@ -322,17 +324,22 @@ class LoadBookingsForCategoryEvent extends BookingEvent {
 
 /// НОВОЕ: Вычислить недоступные даты для пользователя по выбранной категории.
 /// Дата недоступна если: есть бронь с той же секцией ИЛИ есть блокировка.
+/// [excludeBookingId] — при редактировании передать id текущей брони,
+/// чтобы её дата не помечалась как недоступная в календаре.
 class LoadUnavailableDatesForCategoryEvent extends BookingEvent {
   final String restaurantId;
   final String categoryId;
   final int categorySection;
+  final String? excludeBookingId;
 
   const LoadUnavailableDatesForCategoryEvent({
     required this.restaurantId,
     required this.categoryId,
     required this.categorySection,
+    this.excludeBookingId,
   });
 
   @override
-  List<Object?> get props => [restaurantId, categoryId, categorySection];
+  List<Object?> get props =>
+      [restaurantId, categoryId, categorySection, excludeBookingId];
 }

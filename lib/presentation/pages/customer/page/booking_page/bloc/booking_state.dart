@@ -73,6 +73,9 @@ class BookingState extends Equatable {
   /// Флаг загрузки бронирований для категории
   final bool isBookingsForCategoryLoading;
 
+  /// Флаг загрузки недоступных дат (пока true — открывать календарь нельзя)
+  final bool isUnavailableDatesLoading;
+
   const BookingState(
     this.notes,
     this.selectedDate, {
@@ -107,6 +110,7 @@ class BookingState extends Equatable {
     this.unavailableDatesForCategory = const {},
     this.bookingsForCategory = const [],
     this.isBookingsForCategoryLoading = false,
+    this.isUnavailableDatesLoading = false,
   });
 
   BookingState copyWith({
@@ -143,6 +147,7 @@ class BookingState extends Equatable {
     Set<DateTime>? unavailableDatesForCategory,
     List<Booking>? bookingsForCategory,
     bool? isBookingsForCategoryLoading,
+    bool? isUnavailableDatesLoading,
     bool clearSelectedManagementCategory = false,
     bool clearClosureSuccessMessage = false,
     bool clearErrorMessage = false,
@@ -191,6 +196,8 @@ class BookingState extends Equatable {
       bookingsForCategory: bookingsForCategory ?? this.bookingsForCategory,
       isBookingsForCategoryLoading:
           isBookingsForCategoryLoading ?? this.isBookingsForCategoryLoading,
+      isUnavailableDatesLoading:
+          isUnavailableDatesLoading ?? this.isUnavailableDatesLoading,
     );
   }
 
@@ -326,5 +333,6 @@ class BookingState extends Equatable {
         unavailableDatesForCategory,
         bookingsForCategory,
         isBookingsForCategoryLoading,
+        isUnavailableDatesLoading,
       ];
 }

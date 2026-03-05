@@ -20,7 +20,7 @@ dependencies:
   # UI
   table_calendar: ^3.2.0
   cached_network_image: ^3.4.1
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
   url_launcher: ^6.2.6
   pin_code_fields: ^8.0.1
 
@@ -62,3 +62,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: false
+  ios: true
+  image_path: "assets/icon/icon.png"

@@ -532,26 +532,30 @@ class _BookingFormPageState extends State<_BookingFormPage> {
 
   // ── DATE ROW ─────────────────────────────────
   Widget _buildDateRow(BuildContext context, bloc_state.BookingState state) {
+    final isLoadingDates = state.isUnavailableDatesLoading;
     return _SectionCard(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () async {
-          final picked = await showDialog<DateTime>(
-            context: context,
-            builder: (dialogCtx) => _CalendarPickerDialog(
-              initialDate: state.isDateUnavailableForUser(state.selectedDate)
-                  ? DateTime.now()
-                  : state.selectedDate,
-              unavailableDates: state.unavailableDatesForCategory,
-            ),
-          );
-          if (picked != null) {
-            context.read<BookingBloc>()
-              ..add(UpdateDateEvent(picked))
-              ..add(LoadExistingBookingsForDateEvent(
-                  picked, widget.restaurantId));
-          }
-        },
+        onTap: isLoadingDates
+            ? null
+            : () async {
+                final picked = await showDialog<DateTime>(
+                  context: context,
+                  builder: (dialogCtx) => _CalendarPickerDialog(
+                    initialDate:
+                        state.isDateUnavailableForUser(state.selectedDate)
+                            ? DateTime.now()
+                            : state.selectedDate,
+                    unavailableDates: state.unavailableDatesForCategory,
+                  ),
+                );
+                if (picked != null) {
+                  context.read<BookingBloc>()
+                    ..add(UpdateDateEvent(picked))
+                    ..add(LoadExistingBookingsForDateEvent(
+                        picked, widget.restaurantId));
+                }
+              },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -563,8 +567,16 @@ class _BookingFormPageState extends State<_BookingFormPage> {
                   color: _primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.calendar_today_outlined,
-                    color: _primary, size: 20),
+                child: isLoadingDates
+                    ? Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: _primary,
+                        ),
+                      )
+                    : const Icon(Icons.calendar_today_outlined,
+                        color: _primary, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -581,20 +593,30 @@ class _BookingFormPageState extends State<_BookingFormPage> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      DateFormat('d MMMM yyyy', 'ru')
-                          .format(state.selectedDate),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: _textMain,
-                      ),
-                    ),
+                    isLoadingDates
+                        ? Text(
+                            'Загрузка доступных дат...',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _textSub,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          )
+                        : Text(
+                            DateFormat('d MMMM yyyy', 'ru')
+                                .format(state.selectedDate),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: _textMain,
+                            ),
+                          ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  size: 14, color: _textSub),
+              if (!isLoadingDates)
+                const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: _textSub),
             ],
           ),
         ),

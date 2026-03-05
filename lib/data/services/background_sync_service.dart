@@ -2,11 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:workmanager/workmanager.dart';
 
 import 'package:restauran/data/models/booking_hive_model.dart';
 import 'package:restauran/data/services/booking_cache_service.dart';
 import 'package:restauran/firebase_options.dart';
+
+// Workmanager импортируем только на мобильных платформах
+import 'package:workmanager/workmanager.dart'
+    if (dart.library.html) 'package:restauran/data/services/workmanager_stub.dart';
 
 const _syncTaskName = 'bookings_background_sync';
 const _syncTaskTag = 'bookings_sync';
@@ -18,14 +21,12 @@ void callbackDispatcher() {
     try {
       debugPrint('[BackgroundSync] Задача запущена: $taskName');
 
-      // Инициализируем Firebase если не инициализирован
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
       }
 
-      // Инициализируем Hive
       await Hive.initFlutter();
       if (!Hive.isAdapterRegistered(0)) {
         Hive.registerAdapter(BookingHiveModelAdapter());
@@ -42,12 +43,16 @@ void callbackDispatcher() {
   });
 }
 
-/// Сервис фоновой синхронизации бронирований.
-/// Регистрирует периодическую задачу через Workmanager.
 class BackgroundSyncService {
   /// Инициализировать и зарегистрировать фоновую задачу.
-  /// Вызывать один раз в main() после Hive.initFlutter().
+  /// На Web — ничего не делаем (WorkManager не поддерживается).
   static Future<void> initialize() async {
+    if (kIsWeb) {
+      debugPrint(
+          '[BackgroundSyncService] Web — фоновая синхронизация пропущена');
+      return;
+    }
+
     await Workmanager().initialize(
       callbackDispatcher,
       isInDebugMode: kDebugMode,
@@ -56,10 +61,8 @@ class BackgroundSyncService {
     await Workmanager().registerPeriodicTask(
       _syncTaskName,
       _syncTaskTag,
-      // Минимальный интервал для Workmanager — 15 минут
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
-        // Синхронизируем только при наличии сети
         networkType: NetworkType.connected,
       ),
       existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
@@ -71,19 +74,16 @@ class BackgroundSyncService {
         '(каждые 15 мин при наличии сети)');
   }
 
-  /// Отменить фоновую задачу (например, при выходе из аккаунта)
   static Future<void> cancel() async {
+    if (kIsWeb) return;
     await Workmanager().cancelByUniqueName(_syncTaskName);
     debugPrint('[BackgroundSyncService] Фоновая задача отменена');
   }
 
-  /// Немедленная синхронизация всех ресторанов из Hive.
-  /// Читает restaurantId из всех открытых box-ов и обновляет данные.
   static Future<void> _syncAll() async {
     final firestore = FirebaseFirestore.instance;
     final cacheService = BookingCacheService();
 
-    // Получаем список restaurantId из метаданных Hive
     final restaurantIds = await _getKnownRestaurantIds();
 
     if (restaurantIds.isEmpty) {
@@ -95,7 +95,6 @@ class BackgroundSyncService {
       try {
         debugPrint('[BackgroundSync] Синхронизация ресторана: $restaurantId');
 
-        // Загружаем брони из Firestore
         final snapshot = await firestore
             .collection('bookings')
             .where('restaurant_id', isEqualTo: restaurantId)
@@ -109,10 +108,8 @@ class BackgroundSyncService {
           return data;
         }).toList();
 
-        // Обогащаем данные
         final enriched = await _enrichBookings(firestore, rawBookings);
 
-        // Сохраняем в кэш
         await cacheService.saveBookings(restaurantId, enriched);
         await cacheService.saveLastUpdated(restaurantId);
 
@@ -124,8 +121,6 @@ class BackgroundSyncService {
     }
   }
 
-  /// Обогащает список бронирований данными из Firestore:
-  /// категория зала, extras, блюда — для офлайн-доступа
   static Future<List<Map<String, dynamic>>> _enrichBookings(
     FirebaseFirestore firestore,
     List<Map<String, dynamic>> bookings,
@@ -135,7 +130,6 @@ class BackgroundSyncService {
     for (final booking in bookings) {
       final map = Map<String, dynamic>.from(booking);
 
-      // 1. Название категории зала
       final categoryId = map['restaurant_category_id']?.toString();
       if (categoryId != null && categoryId.isNotEmpty) {
         try {
@@ -149,7 +143,6 @@ class BackgroundSyncService {
         }
       }
 
-      // 2. Названия доп. опций
       final extrasIds = map['selected_extras'];
       if (extrasIds is List && extrasIds.isNotEmpty) {
         final names = <String>[];
@@ -169,7 +162,6 @@ class BackgroundSyncService {
         map['_extras_names'] = <String>[];
       }
 
-      // 3. Выбранные блюда (menu_selections: {categoryId: itemId})
       final menuSelections = map['menu_selections'];
       if (menuSelections is Map && menuSelections.isNotEmpty) {
         final menuItems = <Map<String, String>>[];
@@ -179,8 +171,7 @@ class BackgroundSyncService {
                 .collection('menu_categories')
                 .doc(entry.key.toString())
                 .get();
-            final categoryName =
-                categoryDoc.data()?['name']?.toString() ?? '—';
+            final categoryName = categoryDoc.data()?['name']?.toString() ?? '—';
 
             final itemDoc = await firestore
                 .collection('menu_items')
@@ -202,9 +193,7 @@ class BackgroundSyncService {
     return enriched;
   }
 
-  /// Читает список всех известных restaurantId из meta box-ов Hive
   static Future<List<String>> _getKnownRestaurantIds() async {
-    // Открываем registry box где храним список ресторанов
     const registryBoxName = 'sync_registry';
     Box<String> registry;
 
@@ -217,7 +206,6 @@ class BackgroundSyncService {
     return registry.values.toSet().toList();
   }
 
-  /// Регистрирует restaurantId в registry (вызывается при первой загрузке)
   static Future<void> registerRestaurant(String restaurantId) async {
     const registryBoxName = 'sync_registry';
     Box<String> registry;
@@ -228,8 +216,8 @@ class BackgroundSyncService {
       registry = await Hive.openBox<String>(registryBoxName);
     }
 
-    // Ключ = restaurantId, значение = restaurantId
     await registry.put(restaurantId, restaurantId);
-    debugPrint('[BackgroundSyncService] Зарегистрирован ресторан: $restaurantId');
+    debugPrint(
+        '[BackgroundSyncService] Зарегистрирован ресторан: $restaurantId');
   }
 }

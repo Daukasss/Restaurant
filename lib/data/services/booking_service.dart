@@ -89,9 +89,15 @@ class BookingService implements AbstractBookingService {
           .where('booking_date', isLessThan: Timestamp.fromDate(endOfDay))
           .where('status', whereIn: ['pending', 'confirmed']).get();
 
+      // Исключаем текущую бронь при редактировании (защита от null и пустой строки)
+      final effectiveExcludeId =
+          (excludeBookingId != null && excludeBookingId.isNotEmpty)
+              ? excludeBookingId
+              : null;
+
       final existingBookings = bookingsSnapshot.docs
-          .where(
-              (doc) => excludeBookingId == null || doc.id != excludeBookingId)
+          .where((doc) =>
+              effectiveExcludeId == null || doc.id != effectiveExcludeId)
           .map((doc) {
         final data = doc.data();
         data['id'] = doc.id;

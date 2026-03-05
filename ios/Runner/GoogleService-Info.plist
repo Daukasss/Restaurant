@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.blood.moon</string>
+	<string>com.daulettuken.blood.moon</string>
 	<key>PROJECT_ID</key>
 	<string>aq-toi</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,8 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:745460234210:ios:5464c603c1552339a86bbb</string>
+	<string>1:745460234210:ios:b065b0ee2f21888da86bbb</string>
+	<key>DATABASE_URL</key>
+	<string>https://aq-toi-default-rtdb.firebaseio.com</string>
 </dict>
 </plist>

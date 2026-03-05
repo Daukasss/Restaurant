@@ -1,7 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class PushNotificationService {
   PushNotificationService._();
@@ -11,43 +13,110 @@ class PushNotificationService {
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
+  static const _vapidKey = 'YOUR_VAPID_KEY';
+
+  // flutter_local_notifications — для показа пуша когда приложение активно
+  static final _localNotifications = FlutterLocalNotificationsPlugin();
+  static const _androidChannel = AndroidNotificationChannel(
+    'bookings', // должен совпадать с channelId в index.ts
+    'Бронирования',
+    description: 'Уведомления о бронированиях',
+    importance: Importance.max,
+    playSound: true,
+  );
+
   // ─── Инициализация ────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    // Запрос разрешения (iOS + Android 13+)
-    await _fcm.requestPermission(alert: true, badge: true, sound: true);
+    // 1. Разрешение FCM
+    try {
+      await _fcm.requestPermission(alert: true, badge: true, sound: true);
+    } catch (e) {
+      debugPrint('[Push] requestPermission error: $e');
+    }
 
-    // Сохранить токен текущего устройства
+    // 2. Настройка flutter_local_notifications (только мобильные)
+    if (!kIsWeb) {
+      await _localNotifications.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/icon_toi'),
+          iOS: DarwinInitializationSettings(),
+        ),
+      );
+
+      // Создаём канал на Android
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(_androidChannel);
+    }
+
+    // 3. Сохранить токен
     await _saveCurrentToken();
-
-    // Обновлять токен при его ротации
     _fcm.onTokenRefresh.listen(_saveTokenToFirestore);
 
-    // Пуш открыт когда приложение было убито
-    final initial = await _fcm.getInitialMessage();
-    if (initial != null) _handleMessage(initial);
+    // 4. Пуш когда приложение было убито
+    try {
+      final initial = await _fcm.getInitialMessage();
+      if (initial != null) _handleMessage(initial);
+    } catch (e) {
+      debugPrint('[Push] getInitialMessage error: $e');
+    }
 
-    // Пуш открыт когда приложение в фоне
+    // 5. Пуш когда приложение в фоне и пользователь тапнул
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
 
-    // Пуш на переднем плане — просто логируем (показывать не нужно по ТЗ)
+    // 6. Пуш когда приложение АКТИВНО — показываем через local notifications
     FirebaseMessaging.onMessage.listen((msg) {
       debugPrint('[Push] foreground: ${msg.notification?.title}');
+      _showLocalNotification(msg);
     });
 
     debugPrint('[Push] initialized');
   }
 
+  /// Показать уведомление через flutter_local_notifications (foreground)
+  void _showLocalNotification(RemoteMessage message) {
+    if (kIsWeb) return;
+    final n = message.notification;
+    if (n == null) return;
+
+    _localNotifications.show(
+      // id — хэш messageId чтобы не дублировать
+      message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+      n.title,
+      n.body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannel.id,
+          _androidChannel.name,
+          channelDescription: _androidChannel.description,
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          icon: '@mipmap/ic_launcher',
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
+
   void _handleMessage(RemoteMessage message) {
-    // При необходимости — навигация по data payload
     debugPrint('[Push] opened: ${message.data}');
+    // Здесь можно добавить навигацию по data['type'] и data['booking_id']
   }
 
   // ─── Токены ───────────────────────────────────────────────────────────────
 
   Future<void> _saveCurrentToken() async {
     try {
-      final token = await _fcm.getToken();
+      final token = kIsWeb
+          ? await _fcm.getToken(vapidKey: _vapidKey)
+          : await _fcm.getToken();
       if (token != null) await _saveTokenToFirestore(token);
     } catch (e) {
       debugPrint('[Push] _saveCurrentToken error: $e');
@@ -70,12 +139,14 @@ class PushNotificationService {
     }
   }
 
-  /// Вызывать при логауте
+  /// Вызывать при логауте — удаляет токен из Firestore
   Future<void> removeCurrentToken() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
     try {
-      final token = await _fcm.getToken();
+      final token = kIsWeb
+          ? await _fcm.getToken(vapidKey: _vapidKey)
+          : await _fcm.getToken();
       if (token == null) return;
       await _db.collection('users').doc(uid).update({
         'fcm_tokens': FieldValue.arrayRemove([token]),
@@ -86,120 +157,14 @@ class PushNotificationService {
     }
   }
 
-  // ─── Публичные методы (вызываются из BookingBloc) ─────────────────────────
-
-  /// Новая бронь от юзера → уведомить селлера.
-  /// Если [isSellerBooking] == true — ничего не делаем.
-  Future<void> notifySellerNewBooking({
-    required String bookingId,
-    required String restaurantId,
-    required String restaurantName,
-    required String guestName,
-    required int guests,
-    required String dateStr, // "dd.MM.yyyy"
-    required String startTime, // "HH:mm"
-    required String endTime,
-    required bool isSellerBooking,
-  }) async {
-    if (isSellerBooking) return;
-
-    final sellerId = await _getOwnerId(restaurantId);
-    if (sellerId == null) return;
-
-    await _notifyUser(
-      uid: sellerId,
-      title: '🆕 Новое бронирование — $restaurantName',
-      body: '$guestName · $guests гостей · $dateStr · $startTime–$endTime',
-      data: {
-        'type': 'new_booking',
-        'booking_id': bookingId,
-        'restaurant_id': restaurantId
-      },
-    );
-  }
-
-  /// Изменение брони юзером → уведомить селлера.
-  /// Если [isSellerBooking] == true — ничего не делаем.
-  Future<void> notifySellerBookingUpdated({
-    required String bookingId,
-    required String restaurantId,
-    required String restaurantName,
-    required String guestName,
-    required String dateStr,
-    required String startTime,
-    required String endTime,
-    required bool isSellerBooking,
-    List<String> changedFields = const [],
-  }) async {
-    if (isSellerBooking) return;
-
-    final sellerId = await _getOwnerId(restaurantId);
-    if (sellerId == null) return;
-
-    final changedText = changedFields.isNotEmpty
-        ? 'Изменено: ${changedFields.join(", ")}'
-        : 'Бронирование обновлено';
-
-    await _notifyUser(
-      uid: sellerId,
-      title: '✏️ Изменение брони — $restaurantName',
-      body: '$guestName · $dateStr · $startTime–$endTime\n$changedText',
-      data: {
-        'type': 'booking_updated',
-        'booking_id': bookingId,
-        'restaurant_id': restaurantId
-      },
-    );
-  }
-
-  // ─── Внутренние ───────────────────────────────────────────────────────────
-
-  /// Сохраняем данные для уведомления в служебную коллекцию.
-  /// Cloud Function (onWrite на mail_queue / notification_queue) забирает и отправляет.
-  ///
-  /// Альтернатива: если хотите отправлять прямо из клиента через FCM Data Message —
-  /// замените тело этого метода на вызов Cloud Function через http.post.
-  Future<void> _notifyUser({
-    required String uid,
-    required String title,
-    required String body,
-    Map<String, String> data = const {},
-  }) async {
-    try {
-      await _db.collection('notification_queue').add({
-        'uid': uid,
-        'title': title,
-        'body': body,
-        'data': data,
-        'created_at': FieldValue.serverTimestamp(),
-        'sent': false,
-      });
-      debugPrint('[Push] queued notification for $uid: $title');
-    } catch (e) {
-      debugPrint('[Push] _notifyUser error: $e');
-    }
-  }
-
-  Future<String?> _getOwnerId(String restaurantId) async {
-    try {
-      final doc = await _db.collection('restaurants').doc(restaurantId).get();
-      return doc.data()?['owner_id']?.toString();
-    } catch (e) {
-      debugPrint('[Push] _getOwnerId error: $e');
-      return null;
-    }
-  }
+  // ─── Хелперы форматирования (используются в BookingBloc) ─────────────────
 
   static String formatDate(DateTime dt) =>
-      '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+      '${dt.day.toString().padLeft(2, '0')}.'
+      '${dt.month.toString().padLeft(2, '0')}.'
+      '${dt.year}';
 
-  static String formatTime(TimeOfDayCompat t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-}
-
-/// Простой класс-обёртка чтобы не импортировать flutter/material в сервис
-class TimeOfDayCompat {
-  final int hour;
-  final int minute;
-  const TimeOfDayCompat(this.hour, this.minute);
+  static String formatTimeOfDay(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:'
+      '${t.minute.toString().padLeft(2, '0')}';
 }

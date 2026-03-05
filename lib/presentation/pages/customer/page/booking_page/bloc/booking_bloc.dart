@@ -159,6 +159,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
             restaurantId: event.restaurantId,
             categoryId: selectedId,
             categorySection: category.section,
+            excludeBookingId: state.bookingId,
           ));
         } catch (_) {
           try {
@@ -172,6 +173,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
                 restaurantId: event.restaurantId,
                 categoryId: selectedId,
                 categorySection: section,
+                excludeBookingId: state.bookingId,
               ));
             }
           } catch (e2) {
@@ -204,6 +206,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         restaurantId: event.restaurantId,
         categoryId: event.categoryId,
         categorySection: category.section,
+        excludeBookingId: event.excludeBookingId,
       ));
     } catch (e) {
       try {
@@ -217,6 +220,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
             restaurantId: event.restaurantId,
             categoryId: event.categoryId,
             categorySection: section,
+            excludeBookingId: event.excludeBookingId,
           ));
         }
       } catch (e2) {
@@ -456,20 +460,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
 
       final result = await bookingService.createBooking(booking);
 
-      // ── Пуш селлеру (игнорируется если isSellerBooking == true) ──────────
-      PushNotificationService.instance.notifySellerNewBooking(
-        bookingId: result['id'] as String? ?? '',
-        restaurantId: event.restaurantId,
-        restaurantName: event.restaurantName,
-        guestName: event.name,
-        guests: int.tryParse(event.guests) ?? 0,
-        dateStr: _fmtDate(event.selectedDate),
-        startTime: _fmtTime(event.startTime),
-        endTime: _fmtTime(event.endTime),
-        isSellerBooking: isSellerBooking,
-      );
-      // ─────────────────────────────────────────────────────────────────────
-
       emit(state.copyWith(
         isLoading: false,
         isSuccess: true,
@@ -523,6 +513,8 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         add(SelectRestaurantCategoryEvent(
           event.booking.restaurantCategoryId!,
           restaurantId: event.restaurantId,
+          excludeBookingId:
+              event.booking.id, // исключаем текущую бронь из проверки дат
         ));
       }
       emit(state.copyWith(isLoading: false));
@@ -589,29 +581,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       );
 
       // ── Пуш селлеру об изменении (игнорируется если бронь ручная) ─────────
-      bool isSellerBooking = false;
-      try {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          final profileDoc = await FirebaseFirestore.instance
-              .collection('profiles')
-              .doc(uid)
-              .get();
-          isSellerBooking =
-              (profileDoc.data()?['role'] as String? ?? '') == 'seller';
-        }
-      } catch (_) {}
 
-      PushNotificationService.instance.notifySellerBookingUpdated(
-        bookingId: event.bookingId ?? '',
-        restaurantId: event.restaurantId,
-        restaurantName: event.restaurantName,
-        guestName: event.name,
-        dateStr: _fmtDate(event.selectedDate),
-        startTime: _fmtTime(event.startTime),
-        endTime: _fmtTime(event.endTime),
-        isSellerBooking: isSellerBooking,
-      );
       // ─────────────────────────────────────────────────────────────────────
 
       emit(state.copyWith(isLoading: false, isSuccess: true));
@@ -773,10 +743,17 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     Emitter<BookingState> emit,
   ) async {
     try {
+      emit(state.copyWith(isUnavailableDatesLoading: true));
       final Set<DateTime> unavailable = {};
       final now = DateTime.now();
       final startOfRange = DateTime(now.year, now.month, now.day);
       final future = startOfRange.add(const Duration(days: 365));
+
+      // Нормализуем excludeBookingId — пустая строка приравнивается к null
+      final effectiveExcludeId =
+          (event.excludeBookingId != null && event.excludeBookingId!.isNotEmpty)
+              ? event.excludeBookingId
+              : null;
 
       // 1. Брони с той же секцией
       final bookingsSnapshot = await FirebaseFirestore.instance
@@ -788,6 +765,10 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           .where('status', whereIn: ['pending', 'confirmed']).get();
 
       for (final doc in bookingsSnapshot.docs) {
+        // Пропускаем текущую бронь пользователя при редактировании
+        if (effectiveExcludeId != null && doc.id == effectiveExcludeId) {
+          continue;
+        }
         final data = doc.data();
         final section = data['category_section'] as int?;
         if (section == event.categorySection && data['booking_date'] != null) {
@@ -830,9 +811,13 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         }
       }
 
-      emit(state.copyWith(unavailableDatesForCategory: unavailable));
+      emit(state.copyWith(
+        unavailableDatesForCategory: unavailable,
+        isUnavailableDatesLoading: false,
+      ));
     } catch (e) {
       debugPrint('Ошибка загрузки недоступных дат: $e');
+      emit(state.copyWith(isUnavailableDatesLoading: false));
     }
   }
 
