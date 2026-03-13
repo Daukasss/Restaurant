@@ -15,32 +15,57 @@ class PushNotificationService {
 
   static const _vapidKey = 'YOUR_VAPID_KEY';
 
-  // flutter_local_notifications — для показа пуша когда приложение активно
   static final _localNotifications = FlutterLocalNotificationsPlugin();
+
+  // ВАЖНО: id канала должен совпадать с:
+  //   - AndroidManifest.xml → default_notification_channel_id
+  //   - index.ts → channelId
   static const _androidChannel = AndroidNotificationChannel(
-    'bookings', // должен совпадать с channelId в index.ts
+    'bookings',
     'Бронирования',
     description: 'Уведомления о бронированиях',
     importance: Importance.max,
     playSound: true,
+    enableVibration: true,
   );
 
   // ─── Инициализация ────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    // 1. Разрешение FCM
+    // 1. Запрос разрешения FCM
     try {
-      await _fcm.requestPermission(alert: true, badge: true, sound: true);
+      await _fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
     } catch (e) {
       debugPrint('[Push] requestPermission error: $e');
     }
 
-    // 2. Настройка flutter_local_notifications (только мобильные)
+    // 2. ИСПРАВЛЕНО: показывать уведомления когда приложение активно (foreground)
+    //    Без этого iOS полностью игнорирует пуши в foreground
+    await _fcm.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
+    // 3. Настройка flutter_local_notifications (только мобильные)
     if (!kIsWeb) {
       await _localNotifications.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/icon_toi'),
-          iOS: DarwinInitializationSettings(),
+          iOS: DarwinInitializationSettings(
+            // ИСПРАВЛЕНО: явно разрешаем показ в foreground на iOS
+            requestAlertPermission: true,
+            requestBadgePermission: true,
+            requestSoundPermission: true,
+            defaultPresentAlert: true,
+            defaultPresentBadge: true,
+            defaultPresentSound: true,
+          ),
         ),
       );
 
@@ -49,13 +74,19 @@ class PushNotificationService {
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_androidChannel);
+
+      // ИСПРАВЛЕНО: Android 13+ требует явного запроса разрешения POST_NOTIFICATIONS
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
     }
 
-    // 3. Сохранить токен
+    // 4. Сохранить токен
     await _saveCurrentToken();
     _fcm.onTokenRefresh.listen(_saveTokenToFirestore);
 
-    // 4. Пуш когда приложение было убито
+    // 5. Приложение было убито — пользователь тапнул на пуш
     try {
       final initial = await _fcm.getInitialMessage();
       if (initial != null) _handleMessage(initial);
@@ -63,26 +94,32 @@ class PushNotificationService {
       debugPrint('[Push] getInitialMessage error: $e');
     }
 
-    // 5. Пуш когда приложение в фоне и пользователь тапнул
+    // 6. Приложение в фоне — пользователь тапнул на пуш
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
 
-    // 6. Пуш когда приложение АКТИВНО — показываем через local notifications
+    // 7. Приложение АКТИВНО (foreground) — показываем через local notifications
+    //    FCM в foreground НЕ показывает системный баннер сам по себе на Android,
+    //    поэтому мы делаем это через flutter_local_notifications
     FirebaseMessaging.onMessage.listen((msg) {
-      debugPrint('[Push] foreground: ${msg.notification?.title}');
+      debugPrint('[Push] foreground message: ${msg.notification?.title}');
       _showLocalNotification(msg);
     });
 
-    debugPrint('[Push] initialized');
+    debugPrint('[Push] initialized ✅');
   }
 
-  /// Показать уведомление через flutter_local_notifications (foreground)
+  // ─── Показ уведомления через flutter_local_notifications (foreground) ────
+
   void _showLocalNotification(RemoteMessage message) {
     if (kIsWeb) return;
+
     final n = message.notification;
-    if (n == null) return;
+    if (n == null) {
+      debugPrint('[Push] foreground: notification payload is null, skipping');
+      return;
+    }
 
     _localNotifications.show(
-      // id — хэш messageId чтобы не дублировать
       message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
       n.title,
       n.body,
@@ -94,7 +131,9 @@ class PushNotificationService {
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
-          icon: '@mipmap/ic_launcher',
+          enableVibration: true,
+          // ИСПРАВЛЕНО: используем тот же значок что и в FCM
+          icon: '@mipmap/icon_toi',
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,
@@ -103,10 +142,13 @@ class PushNotificationService {
         ),
       ),
     );
+
+    debugPrint('[Push] local notification shown: ${n.title}');
   }
 
   void _handleMessage(RemoteMessage message) {
-    debugPrint('[Push] opened: ${message.data}');
+    debugPrint('[Push] opened: type=${message.data['type']}, '
+        'booking_id=${message.data['booking_id']}');
     // Здесь можно добавить навигацию по data['type'] и data['booking_id']
   }
 
@@ -129,7 +171,7 @@ class PushNotificationService {
     try {
       await _db.collection('users').doc(uid).set(
         {
-          'fcm_tokens': FieldValue.arrayUnion([token])
+          'fcm_tokens': FieldValue.arrayUnion([token]),
         },
         SetOptions(merge: true),
       );
@@ -152,6 +194,7 @@ class PushNotificationService {
         'fcm_tokens': FieldValue.arrayRemove([token]),
       });
       await _fcm.deleteToken();
+      debugPrint('[Push] token removed for $uid');
     } catch (e) {
       debugPrint('[Push] removeCurrentToken error: $e');
     }

@@ -23,6 +23,9 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   StreamSubscription<bool>? _connectivitySub;
   String? _currentRestaurantId;
 
+  /// Кэш названий категорий в памяти — категорий мало, запрашиваем один раз
+  final _categoryCache = <String, String>{};
+
   BookingBloc() : super(BookingInitial()) {
     on<LoadBookings>(_onLoadBookings);
     on<UpdateBookingStatus>(_onUpdateBookingStatus);
@@ -67,7 +70,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       final pricePerGuest = restaurantData['pricePerGuest'] as double?;
       final sumPeople = restaurantData['sumPeople'] as int?;
 
-      // ✅ Сохраняем sumPeople и pricePerGuest в Hive — нужны офлайн
       await _cacheService.saveRestaurantMeta(
         restaurantId,
         pricePerGuest: pricePerGuest,
@@ -77,6 +79,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       var bookings = await _bookingService.getBookings(restaurantId);
       bookings = _updateBookingStatusesByTime(bookings);
       bookings.sort(_compareBookingsByDateAndTime);
+      // ✅ Обогащение теперь параллельное
       bookings = await _enrichBookings(bookings);
 
       await _cacheService.saveBookings(restaurantId, bookings);
@@ -114,8 +117,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
 
     final cached = await _cacheService.loadBookings(restaurantId);
     final cacheTime = await _cacheService.lastUpdated(restaurantId);
-
-    // ✅ Читаем сохранённые мета-данные ресторана из Hive
     final meta = await _cacheService.loadRestaurantMeta(restaurantId);
 
     var bookings = _updateBookingStatusesByTime(cached);
@@ -127,89 +128,110 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     emit(BookingLoaded(
       bookings: bookings,
       filteredBookings: bookings,
-      pricePerGuest: meta.pricePerGuest, // ✅ теперь не null
-      sumPeople: meta.sumPeople, // ✅ теперь не null
+      pricePerGuest: meta.pricePerGuest,
+      sumPeople: meta.sumPeople,
       activeFilter: 'all',
       isOffline: true,
       cacheTime: cacheTime,
     ));
   }
 
-  // ── Обогащение данных ─────────────────────────────────
+  // ── Обогащение данных (параллельное) ─────────────────────────────────
 
   Future<List<Map<String, dynamic>>> _enrichBookings(
     List<Map<String, dynamic>> bookings,
   ) async {
-    final enriched = <Map<String, dynamic>>[];
+    // ✅ Все бронирования обогащаем параллельно через Future.wait
+    return Future.wait(bookings.map(_enrichSingleBooking));
+  }
 
-    for (final booking in bookings) {
-      final map = Map<String, dynamic>.from(booking);
+  Future<Map<String, dynamic>> _enrichSingleBooking(
+    Map<String, dynamic> booking,
+  ) async {
+    final map = Map<String, dynamic>.from(booking);
 
-      // 1. Название категории зала
-      final categoryId = map['restaurant_category_id']?.toString();
-      if (categoryId != null && categoryId.isNotEmpty) {
-        try {
-          final category =
-              await _restaurantService.getRestaurantCategoryById(categoryId);
-          map['_category_name'] = category?.name ?? '';
-        } catch (_) {
-          map['_category_name'] = '';
-        }
-      } else {
-        map['_category_name'] = '';
-      }
+    final categoryId = map['restaurant_category_id']?.toString();
+    final extrasIds =
+        map['selected_extras'] is List ? map['selected_extras'] as List : [];
+    final hasMenu = map['menu_selections'] != null;
 
-      // 2. Названия доп. опций
-      final extrasIds = map['selected_extras'];
-      if (extrasIds is List && extrasIds.isNotEmpty) {
-        try {
-          map['_extras_names'] = await _fetchExtrasNames(extrasIds);
-        } catch (_) {
-          map['_extras_names'] = <String>[];
-        }
-      } else {
-        map['_extras_names'] = <String>[];
-      }
+    // ✅ Три запроса внутри одного бронирования — тоже параллельно
+    final results = await Future.wait([
+      _fetchCategoryName(categoryId),
+      _fetchExtrasNames(extrasIds),
+      hasMenu ? _fetchMenuItems(map) : Future.value(<Map<String, String>>[]),
+    ]);
 
-      // 3. Выбранные блюда
-      if (map['menu_selections'] != null) {
-        try {
-          final items = await _menuService.fetchMenuSelections(map);
-          map['_menu_items'] = items
-              .map((i) => {
-                    'category': (i['category'] ?? '—').toString(),
-                    'item': (i['item'] ?? '—').toString(),
-                  })
-              .toList();
-        } catch (_) {
-          map['_menu_items'] = <Map<String, String>>[];
-        }
-      } else {
-        map['_menu_items'] = <Map<String, String>>[];
-      }
+    map['_category_name'] = results[0] as String;
+    map['_extras_names'] = results[1] as List<String>;
+    map['_menu_items'] = results[2] as List<Map<String, String>>;
 
-      enriched.add(map);
+    return map;
+  }
+
+  // ── Получение названия категории (с кэшем в памяти) ──────────────────
+
+  Future<String> _fetchCategoryName(String? categoryId) async {
+    if (categoryId == null || categoryId.isEmpty) return '';
+
+    // ✅ Если уже запрашивали — берём из кэша, без сетевого вызова
+    if (_categoryCache.containsKey(categoryId)) {
+      return _categoryCache[categoryId]!;
     }
 
-    return enriched;
+    try {
+      final category =
+          await _restaurantService.getRestaurantCategoryById(categoryId);
+      final name = category?.name ?? '';
+      _categoryCache[categoryId] = name;
+      return name;
+    } catch (_) {
+      _categoryCache[categoryId] = '';
+      return '';
+    }
   }
+
+  // ── Получение названий доп. опций (параллельно) ───────────────────────
 
   Future<List<String>> _fetchExtrasNames(List<dynamic> ids) async {
-    final firestore = FirebaseFirestore.instance;
-    final names = <String>[];
-    for (final id in ids) {
-      try {
-        final doc = await firestore
+    if (ids.isEmpty) return [];
+
+    // ✅ Все документы запрашиваем одновременно
+    final docs = await Future.wait(
+      ids.map(
+        (id) => FirebaseFirestore.instance
             .collection('restaurant_extras')
             .doc(id.toString())
-            .get();
-        if (doc.exists) names.add(doc.data()?['name']?.toString() ?? '');
-      } catch (_) {}
-    }
-    return names;
+            .get(),
+      ),
+    );
+
+    return docs
+        .where((d) => d.exists)
+        .map((d) => d.data()?['name']?.toString() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
   }
 
-  // ── Обновление статуса ────────────────────────────────
+  // ── Получение выбранных блюд ──────────────────────────────────────────
+
+  Future<List<Map<String, String>>> _fetchMenuItems(
+    Map<String, dynamic> map,
+  ) async {
+    try {
+      final items = await _menuService.fetchMenuSelections(map);
+      return items
+          .map((i) => {
+                'category': (i['category'] ?? '—').toString(),
+                'item': (i['item'] ?? '—').toString(),
+              })
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ── Обновление статуса ────────────────────────────────────────────────
 
   Future<void> _onUpdateBookingStatus(
     UpdateBookingStatus event,
@@ -240,7 +262,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     }
   }
 
-  // ── Фильтрация ────────────────────────────────────────
+  // ── Фильтрация ────────────────────────────────────────────────────────
 
   void _onFilterBookings(FilterBookings event, Emitter<BookingState> emit) {
     if (state is! BookingLoaded) return;
@@ -270,7 +292,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     ));
   }
 
-  // ── Реакция на сеть ───────────────────────────────────
+  // ── Реакция на сеть ───────────────────────────────────────────────────
 
   Future<void> _onConnectivityChanged(
       ConnectivityChanged event, Emitter<BookingState> emit) async {
@@ -288,7 +310,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     }
   }
 
-  // ── Вспомогательные ──────────────────────────────────
+  // ── Вспомогательные ──────────────────────────────────────────────────
 
   List<Map<String, dynamic>> _applyFilters({
     required List<Map<String, dynamic>> bookings,

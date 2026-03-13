@@ -10,7 +10,7 @@ import 'package:restauran/data/services/background_sync_service.dart';
 import 'package:restauran/data/services/booking_service.dart';
 import 'package:restauran/data/services/favorite_service.dart';
 import 'package:restauran/data/services/profile_service.dart';
-import 'package:restauran/data/services/push_notification_service.dart'; // НОВОЕ
+import 'package:restauran/data/services/push_notification_service.dart';
 import 'package:restauran/data/services/service_locator.dart';
 import 'package:restauran/firebase_options.dart';
 import 'package:restauran/presentation/pages/auth/pages/register_page/cubit/register_cubit.dart';
@@ -30,43 +30,48 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ─── Hive ─────────────────────────────────────────────
+  // ─── Hive ──────────────────────────────────────────────────────────────────
   await Hive.initFlutter();
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(BookingHiveModelAdapter());
   }
 
-  // ─── Firebase ─────────────────────────────────────────
+  // ─── Firebase ─────────────────────────────────────────────────────────────
+  // Обёрнуто в try/catch — Firebase.initializeApp может упасть офлайн
   try {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw Exception('Firebase init timeout'),
       );
     } else {
       Firebase.app();
     }
   } catch (e) {
-    debugPrint('❌ Ошибка Firebase: $e');
+    debugPrint('⚠️ Firebase init error (продолжаем офлайн): $e');
+    // Пробуем получить уже существующий инстанс
     try {
       Firebase.app();
     } catch (_) {}
   }
 
   // Фоновый обработчик — ОБЯЗАТЕЛЬНО до runApp
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  try {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('⚠️ FirebaseMessaging setup error: $e');
+  }
 
-  // ─── DI ───────────────────────────────────────────────
+  // ─── DI ───────────────────────────────────────────────────────────────────
   await setupLocator();
 
   await initializeDateFormatting('ru');
 
-  // ─── Push-уведомления ─────────────────────────────────
-  // initialize() запрашивает разрешение и сохраняет FCM-токен в Firestore
-  await PushNotificationService.instance.initialize();
-
-  // ─── Фоновая синхронизация ────────────────────────────
-  await BackgroundSyncService.initialize();
-
+  // ─── Запускаем приложение сразу ───────────────────────────────────────────
+  // Push-уведомления и фоновая синхронизация запускаются ПОСЛЕ runApp
+  // асинхронно, чтобы не блокировать старт при отсутствии сети.
   runApp(
     MultiBlocProvider(
       providers: [
@@ -90,4 +95,43 @@ Future<void> main() async {
       child: const AqToi(),
     ),
   );
+
+  // ─── Push-уведомления (не блокируют UI) ───────────────────────────────────
+  // Запрос разрешений может зависнуть без сети — изолируем с таймаутом
+  _initPushNotifications();
+
+  // ─── Фоновая синхронизация (не блокирует UI) ──────────────────────────────
+  _initBackgroundSync();
+}
+
+/// Инициализация push-уведомлений с защитой от зависания.
+void _initPushNotifications() {
+  Future(() async {
+    try {
+      await PushNotificationService.instance.initialize().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('⚠️ PushNotificationService timeout — пропускаем');
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ PushNotificationService error: $e');
+    }
+  });
+}
+
+/// Регистрация фоновой задачи Workmanager с защитой от зависания.
+void _initBackgroundSync() {
+  Future(() async {
+    try {
+      await BackgroundSyncService.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⚠️ BackgroundSyncService timeout — пропускаем');
+        },
+      );
+    } catch (e) {
+      debugPrint('⚠️ BackgroundSyncService error: $e');
+    }
+  });
 }

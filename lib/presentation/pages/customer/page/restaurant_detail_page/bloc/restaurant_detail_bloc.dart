@@ -24,112 +24,101 @@ class RestaurantDetailBloc
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      // Получаем ресторан
-      final restaurantDoc = await _firestore
-          .collection('restaurants')
-          .doc(event.restaurantId.toString())
-          .get();
+      // ✅ Запускаем независимые запросы параллельно
+      final results = await Future.wait([
+        _firestore
+            .collection('restaurants')
+            .doc(event.restaurantId.toString())
+            .get(),
+        _firestore
+            .collection('restaurant_categories')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .where('is_active', isEqualTo: true)
+            .orderBy('created_at')
+            .get(),
+        _firestore
+            .collection('menu_categories')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .get(),
+        _firestore
+            .collection('menu_items')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .get(),
+        _fetchIsFavorite(event.restaurantId),
+      ]);
 
-      if (!restaurantDoc.exists) {
-        throw Exception('Ресторан не найден');
-      }
+      // ── Разбираем результаты ──────────────────────────────────────────
 
+      final restaurantDoc =
+          results[0] as DocumentSnapshot<Map<String, dynamic>>;
+      if (!restaurantDoc.exists) throw Exception('Ресторан не найден');
       final restaurant = restaurantDoc.data()!;
-      restaurant['id'] = (restaurantDoc.id);
+      restaurant['id'] = restaurantDoc.id;
 
-      // Получаем категории ресторана
-      final restaurantCategoriesSnapshot = await _firestore
-          .collection('restaurant_categories')
-          .where('restaurant_id', isEqualTo: event.restaurantId)
-          .where('is_active', isEqualTo: true)
-          .orderBy('created_at')
-          .get();
-
+      final restaurantCategoriesSnapshot =
+          results[1] as QuerySnapshot<Map<String, dynamic>>;
       final restaurantCategories = restaurantCategoriesSnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return RestaurantCategory.fromJson(data);
       }).toList();
 
-      final menuByRestaurantCategory = <String, Map<String, dynamic>>{};
-
-      for (final restCategory in restaurantCategories) {
-        // Загружаем категории меню для этой категории ресторана
-        // Используем array-contains т.к. поле restaurant_category_ids — список
-        final menuCategoriesSnapshot = await _firestore
-            .collection('menu_categories')
-            .where('restaurant_id', isEqualTo: event.restaurantId)
-            .where('restaurant_category_ids', arrayContains: restCategory.id)
-            .get();
-
-        final menuCategoriesList = menuCategoriesSnapshot.docs.map((doc) {
-          final data = doc.data();
-          data['id'] = doc.id;
-          return data;
-        }).toList();
-
-        final menuItemsByMenuCategory = <String, List<Map<String, dynamic>>>{};
-
-        for (final menuCategory in menuCategoriesList) {
-          final menuItemsSnapshot = await _firestore
-              .collection('menu_items')
-              .where('category_id', isEqualTo: menuCategory['id'])
-              .get();
-
-          menuItemsByMenuCategory[menuCategory['id']] =
-              menuItemsSnapshot.docs.map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-            return data;
-          }).toList();
-        }
-
-        menuByRestaurantCategory[restCategory.id!] = {
-          'menuCategories': menuCategoriesList,
-          'menuItems': menuItemsByMenuCategory,
-        };
-      }
-
-      // Получаем все категории меню
-      final categoriesSnapshot = await _firestore
-          .collection('menu_categories')
-          .where('restaurant_id', isEqualTo: event.restaurantId)
-          .get();
-
+      final categoriesSnapshot =
+          results[2] as QuerySnapshot<Map<String, dynamic>>;
       final categoriesList = categoriesSnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
 
-      // Получаем все блюда
-      final menuItemsSnapshot = await _firestore
-          .collection('menu_items')
-          .where('restaurant_id', isEqualTo: event.restaurantId)
-          .get();
-
+      final menuItemsSnapshot =
+          results[3] as QuerySnapshot<Map<String, dynamic>>;
       final menuItemsList = menuItemsSnapshot.docs.map((doc) {
         final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();
 
-      // Проверяем, в избранном ли ресторан
-      bool isFavorite = false;
-      final currentUser = _auth.currentUser;
-      if (currentUser != null) {
-        final favsSnapshot = await _firestore
-            .collection('favorites')
-            .where('user_id', isEqualTo: currentUser.uid)
-            .where('restaurant_id', isEqualTo: event.restaurantId)
-            .get();
+      final isFavorite = results[4] as bool;
 
-        isFavorite = favsSnapshot.docs.isNotEmpty;
+      // ── Строим menuByRestaurantCategory без доп. запросов ─────────────
+      // Все данные уже загружены — только группируем в памяти
+
+      // Индексируем меню-категории по id для быстрого поиска
+      final menuCategoriesById = <String, Map<String, dynamic>>{
+        for (final c in categoriesList) c['id'] as String: c,
+      };
+
+      // Группируем блюда по category_id
+      final menuItemsByCategoryId = <String, List<Map<String, dynamic>>>{};
+      for (final item in menuItemsList) {
+        final catId = item['category_id'] as String? ?? '';
+        menuItemsByCategoryId.putIfAbsent(catId, () => []).add(item);
+      }
+
+      // Строим menuByRestaurantCategory — только группировка, без сети
+      final menuByRestaurantCategory = <String, Map<String, dynamic>>{};
+
+      for (final restCategory in restaurantCategories) {
+        // Меню-категории этой зоны ресторана
+        final menuCategoriesForZone = categoriesList.where((c) {
+          final ids = c['restaurant_category_ids'];
+          return ids is List && ids.contains(restCategory.id);
+        }).toList();
+
+        final menuItemsByMenuCategory = <String, List<Map<String, dynamic>>>{};
+        for (final menuCategory in menuCategoriesForZone) {
+          final id = menuCategory['id'] as String;
+          menuItemsByMenuCategory[id] = menuItemsByCategoryId[id] ?? [];
+        }
+
+        menuByRestaurantCategory[restCategory.id!] = {
+          'menuCategories': menuCategoriesForZone,
+          'menuItems': menuItemsByMenuCategory,
+        };
       }
 
       final photoUrls = _parsePhotos(restaurant);
-
-      // Группируем блюда по категориям
       final menuItemsByCategory = _groupMenuItemsByCategory(menuItemsList);
 
       emit(state.copyWith(
@@ -152,6 +141,22 @@ class RestaurantDetailBloc
     }
   }
 
+  /// Проверка избранного вынесена в отдельный метод для чистоты Future.wait
+  Future<bool> _fetchIsFavorite(String restaurantId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return false;
+    try {
+      final snapshot = await _firestore
+          .collection('favorites')
+          .where('user_id', isEqualTo: currentUser.uid)
+          .where('restaurant_id', isEqualTo: restaurantId)
+          .get();
+      return snapshot.docs.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _onToggleFavorite(
     ToggleFavorite event,
     Emitter<RestaurantDetailState> emit,
@@ -166,18 +171,17 @@ class RestaurantDetailBloc
 
     try {
       if (state.isFavorite) {
-        // Удаляем из избранного
         final favsSnapshot = await _firestore
             .collection('favorites')
             .where('user_id', isEqualTo: currentUser.uid)
             .where('restaurant_id', isEqualTo: event.restaurantId)
             .get();
 
-        for (var doc in favsSnapshot.docs) {
-          await doc.reference.delete();
-        }
+        // ✅ Удаляем все документы параллельно
+        await Future.wait(
+          favsSnapshot.docs.map((doc) => doc.reference.delete()),
+        );
       } else {
-        // Добавляем в избранное
         await _firestore.collection('favorites').add({
           'user_id': currentUser.uid,
           'restaurant_id': event.restaurantId,
@@ -224,19 +228,13 @@ class RestaurantDetailBloc
     return photos;
   }
 
-  // Метод для группировки блюд по категориям
   Map<String, List<Map<String, dynamic>>> _groupMenuItemsByCategory(
       List<Map<String, dynamic>> menuItems) {
     final result = <String, List<Map<String, dynamic>>>{};
-
     for (final item in menuItems) {
       final categoryId = item['category_id'] as String;
-      if (!result.containsKey(categoryId)) {
-        result[categoryId] = [];
-      }
-      result[categoryId]!.add(item);
+      result.putIfAbsent(categoryId, () => []).add(item);
     }
-
     return result;
   }
 }
