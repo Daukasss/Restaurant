@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "745460234210",
+    "firebase_url": "https://aq-toi-default-rtdb.firebaseio.com",
     "project_id": "aq-toi",
     "storage_bucket": "aq-toi.firebasestorage.app"
   },

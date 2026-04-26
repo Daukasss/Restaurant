@@ -41,46 +41,53 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-      apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
-      authDomain: "aq-toi.firebaseapp.com",
-      projectId: "aq-toi",
-      storageBucket: "aq-toi.firebasestorage.app",
-      messagingSenderId: "745460234210",
-      appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
-      measurementId: "G-JMCNSK71E6");
+    apiKey: 'AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk',
+    appId: '1:745460234210:web:2abb562eb32b852fa86bbb',
+    messagingSenderId: '745460234210',
+    projectId: 'aq-toi',
+    authDomain: 'aq-toi.firebaseapp.com',
+    databaseURL: 'https://aq-toi-default-rtdb.firebaseio.com',
+    storageBucket: 'aq-toi.firebasestorage.app',
+    measurementId: 'G-S8YC3BJ63Z',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
-    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
-    messagingSenderId: "745460234210",
-    projectId: "aq-toi",
-    storageBucket: "aq-toi.firebasestorage.app",
+    apiKey: 'AIzaSyC-jI8VmTobmf-V6AIclwbvmhCS751z1sI',
+    appId: '1:745460234210:android:88a4939bdc7bcdf7a86bbb',
+    messagingSenderId: '745460234210',
+    projectId: 'aq-toi',
+    databaseURL: 'https://aq-toi-default-rtdb.firebaseio.com',
+    storageBucket: 'aq-toi.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
-    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
-    messagingSenderId: "745460234210",
-    projectId: "aq-toi",
-    storageBucket: "aq-toi.firebasestorage.app",
-    iosBundleId: 'com.blood.moon',
+    apiKey: 'AIzaSyCm-31XuDa7If_Q-dZSt0wUlaBv6_zEB2c',
+    appId: '1:745460234210:ios:b065b0ee2f21888da86bbb',
+    messagingSenderId: '745460234210',
+    projectId: 'aq-toi',
+    databaseURL: 'https://aq-toi-default-rtdb.firebaseio.com',
+    storageBucket: 'aq-toi.firebasestorage.app',
+    iosBundleId: 'com.daulettuken.blood.moon',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
-    appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
-    messagingSenderId: "745460234210",
-    projectId: "aq-toi",
-    storageBucket: "aq-toi.firebasestorage.app",
+    apiKey: 'AIzaSyCm-31XuDa7If_Q-dZSt0wUlaBv6_zEB2c',
+    appId: '1:745460234210:ios:32e761b3d5a217e2a86bbb',
+    messagingSenderId: '745460234210',
+    projectId: 'aq-toi',
+    databaseURL: 'https://aq-toi-default-rtdb.firebaseio.com',
+    storageBucket: 'aq-toi.firebasestorage.app',
     iosBundleId: 'com.blood.moon',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-      apiKey: "AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk",
-      appId: "1:745460234210:web:41af58acf1ad811fa86bbb",
-      messagingSenderId: "745460234210",
-      projectId: "aq-toi",
-      authDomain: "aq-toi.firebaseapp.com",
-      storageBucket: "aq-toi.firebasestorage.app",
-      measurementId: "G-JMCNSK71E6");
+    apiKey: 'AIzaSyDtaU-sAzzW-9flDsw4_NpXytiI1WgzIPk',
+    appId: '1:745460234210:web:2abb562eb32b852fa86bbb',
+    messagingSenderId: '745460234210',
+    projectId: 'aq-toi',
+    authDomain: 'aq-toi.firebaseapp.com',
+    databaseURL: 'https://aq-toi-default-rtdb.firebaseio.com',
+    storageBucket: 'aq-toi.firebasestorage.app',
+    measurementId: 'G-S8YC3BJ63Z',
+  );
 }
