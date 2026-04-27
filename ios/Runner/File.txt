@@ -1,0 +1,1 @@
+Thread 1: "Configuration fails. It may be caused by an invalid GOOGLE_APP_ID in GoogleService-Info.plist or set in the customized options."

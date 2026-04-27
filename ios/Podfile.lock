@@ -1188,8 +1188,6 @@ PODS:
     - abseil/meta/type_traits
     - abseil/xcprivacy
   - abseil/xcprivacy (1.20240722.0)
-  - app_links (6.4.1):
-    - Flutter
   - BoringSSL-GRPC (0.0.37):
     - BoringSSL-GRPC/Implementation (= 0.0.37)
     - BoringSSL-GRPC/Interface (= 0.0.37)
@@ -1444,7 +1442,6 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
-  - app_links (from `.symlinks/plugins/app_links/ios`)
   - cloud_firestore (from `.symlinks/plugins/cloud_firestore/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
@@ -1490,8 +1487,6 @@ SPEC REPOS:
     - RecaptchaInterop
 
 EXTERNAL SOURCES:
-  app_links:
-    :path: ".symlinks/plugins/app_links/ios"
   cloud_firestore:
     :path: ".symlinks/plugins/cloud_firestore/ios"
   connectivity_plus:
@@ -1527,16 +1522,15 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
-  app_links: 3dbc685f76b1693c66a6d9dd1e9ab6f73d97dc0a
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
-  cloud_firestore: 4bd00c3464706d9e09dabac0bb8e9610456109f5
-  connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
-  device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
+  cloud_firestore: d12568452e8283063a2c849d00a49fdbf240dffc
+  connectivity_plus: 2a701ffec2c0ae28a48cf7540e279787e77c447d
+  device_info_plus: 97af1d7e84681a90d0693e63169a5d50e0839a0d
   Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
-  firebase_auth: e9031a1dbe04a90d98e8d11ff2302352a1c6d9e8
-  firebase_core: ee30637e6744af8e0c12a6a1e8a9718506ec2398
-  firebase_messaging: 343de01a8d3e18b60df0c6d37f7174c44ae38e02
-  firebase_storage: 74ebe330dac8084b22991cd1e1abd4a49bc14daf
+  firebase_auth: e7aec07fcada64e296cf237a61df9660e52842c2
+  firebase_core: 8d5e24676350f15dd111aa59a88a1ae26605f9ba
+  firebase_messaging: 834cfc0887393d3108cdb19da8e57655c54fd0e4
+  firebase_storage: f68af7703a067cd0ff1c37ec058ba8aa71948113
   FirebaseAppCheckInterop: ba3dc604a89815379e61ec2365101608d365cf7d
   FirebaseAuth: 4c289b1a43f5955283244a55cf6bd616de344be5
   FirebaseAuthInterop: 95363fe96493cb4f106656666a0768b420cba090
@@ -1550,24 +1544,24 @@ SPEC CHECKSUMS:
   FirebaseSharedSwift: f57ed48f4542b2d7eb4738f4f23ba443f78b3780
   FirebaseStorage: 7c37558dc72731aa5f0a1a2401d8c6de10a513f5
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  flutter_local_notifications: 4cde75091f6327eb8517fa068a0a5950212d2086
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   "gRPC-C++": cc207623316fb041a7a3e774c252cf68a058b9e8
   gRPC-Core: 860978b7db482de8b4f5e10677216309b5ff6330
   GTMSessionFetcher: b8ab00db932816e14b0a0664a08cb73dda6d164b
-  image_picker_ios: 7fe1ff8e34c1790d6fff70a32484959f563a928a
+  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   leveldb-library: cc8b8f8e013647a295ad3f8cd2ddf49a6f19be19
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
-  permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
+  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
-  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
-  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
-  url_launcher_ios: 694010445543906933d732453a59da0a173ae33d
-  workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
+  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
+  sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
+  workmanager_apple: 7bac258335c310689a641e2d66e88d4845d372e9
 
 PODFILE CHECKSUM: 90c0742fe5255fc65c1b2f29dfd77d129f2e19ac
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.15.2

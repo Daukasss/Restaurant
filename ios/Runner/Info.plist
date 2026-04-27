@@ -44,6 +44,31 @@
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<false/>
 
+	<!-- ДОБАВЛЕНО: описание доступа к фото-галерее (image_picker) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Приложению нужен доступ к фото, чтобы выбрать изображение для меню и профиля ресторана.</string>
+
+	<!-- ДОБАВЛЕНО: схемы для url_launcher (звонки, карты) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>https</string>
+		<string>http</string>
+	</array>
+
+	<!-- ДОБАВЛЕНО: URL scheme для Firebase Phone Auth (reCAPTCHA callback) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.745460234210-g0l9h6gm970jaarmmkt6kto8u4m1pta9</string>
+			</array>
+		</dict>
+	</array>
+
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
