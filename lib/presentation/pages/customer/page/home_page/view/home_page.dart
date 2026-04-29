@@ -143,25 +143,25 @@ class _HomeViewState extends State<HomeView> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              IconButton.filledTonal(
-                                icon: const Icon(Icons.filter_list_rounded),
-                                tooltip: 'Фильтры',
-                                onPressed: () {
-                                  // Сохраняем bloc ДО открытия шторки,
-                                  // пока context ещё активен
-                                  final bloc = context.read<HomeBloc>();
-                                  showModalBottomSheet(
-                                    context: context,
-                                    isScrollControlled: true,
-                                    backgroundColor: Colors.transparent,
-                                    builder: (_) => BlocProvider.value(
-                                      value:
-                                          bloc, // используем сохранённую ссылку
-                                      child: const FilterBottomSheet(),
-                                    ),
-                                  );
-                                },
-                              ),
+                              // IconButton.filledTonal(
+                              //   icon: const Icon(Icons.filter_list_rounded),
+                              //   tooltip: 'Фильтры',
+                              //   onPressed: () {
+                              //     // Сохраняем bloc ДО открытия шторки,
+                              //     // пока context ещё активен
+                              //     final bloc = context.read<HomeBloc>();
+                              //     showModalBottomSheet(
+                              //       context: context,
+                              //       isScrollControlled: true,
+                              //       backgroundColor: Colors.transparent,
+                              //       builder: (_) => BlocProvider.value(
+                              //         value:
+                              //             bloc, // используем сохранённую ссылку
+                              //         child: const FilterBottomSheet(),
+                              //       ),
+                              //     );
+                              //   },
+                              // ),
                             ],
                           ),
 

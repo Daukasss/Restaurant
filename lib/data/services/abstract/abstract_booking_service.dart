@@ -24,6 +24,8 @@ abstract class AbstractBookingService {
     required DateTime date,
   });
 
+  Future<void> deleteBooking(String bookingId);
+
   Future<void> updateBooking({
     required String? bookingId,
     required String name,

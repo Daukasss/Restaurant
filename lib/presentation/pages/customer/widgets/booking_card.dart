@@ -110,9 +110,68 @@ class _BookingCardState extends State<BookingCard> {
 
   bool _canEditBooking() {
     final now = DateTime.now();
-    // Используем bookingDate вместо bookingTime
     final difference = widget.booking.bookingDate.difference(now).inDays;
     return difference > 1;
+  }
+
+  Future<void> _deleteBooking(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Удалить бронирование?',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1A365D),
+          ),
+        ),
+        content: const Text(
+          'Это действие нельзя отменить. Бронирование будет удалено навсегда.',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final bookingService = getIt<AbstractBookingService>();
+      await bookingService.deleteBooking(widget.booking.id!);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Бронирование удалено'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      widget.onBookingUpdated?.call();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка удаления: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   // String _calculateBookingPrice() {
@@ -254,7 +313,7 @@ class _BookingCardState extends State<BookingCard> {
             //   const SizedBox(height: 12),
             // ],
 
-            // --- Количество гостей и кнопка редактирования
+            // --- Количество гостей и кнопки действий
             Row(
               children: [
                 const Icon(Icons.people_alt_outlined,
@@ -264,7 +323,8 @@ class _BookingCardState extends State<BookingCard> {
                     style: const TextStyle(fontSize: 14, color: primaryColor)),
                 const Spacer(),
                 if (_canEditBooking() &&
-                    widget.booking.status.toLowerCase() != 'cancelled')
+                    widget.booking.status.toLowerCase() != 'cancelled') ...[
+                  // Кнопка «Изменить»
                   TextButton.icon(
                     onPressed: () async {
                       await Navigator.push(
@@ -295,10 +355,22 @@ class _BookingCardState extends State<BookingCard> {
                         style: TextStyle(color: primaryColor, fontSize: 13)),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
+                          horizontal: 8, vertical: 6),
                     ),
-                  )
-                else
+                  ),
+                  // Кнопка «Удалить»
+                  TextButton.icon(
+                    onPressed: () => _deleteBooking(context),
+                    icon: Icon(Icons.delete_outline,
+                        size: 16, color: Colors.red[600]),
+                    label: Text('Удалить',
+                        style: TextStyle(color: Colors.red[600], fontSize: 13)),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
+                    ),
+                  ),
+                ] else
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

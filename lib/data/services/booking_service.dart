@@ -494,6 +494,30 @@ class BookingService implements AbstractBookingService {
   }
 
   @override
+  Future<void> deleteBooking(String bookingId) async {
+    try {
+      // Удаляем вложенную коллекцию booking_extras
+      final extrasSnapshot = await _firestore
+          .collection('bookings')
+          .doc(bookingId)
+          .collection('booking_extras')
+          .get();
+
+      final batch = _firestore.batch();
+      for (var doc in extrasSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // Удаляем само бронирование
+      await _firestore.collection('bookings').doc(bookingId).delete();
+    } catch (e) {
+      print('Ошибка удаления бронирования: $e');
+      throw Exception('Ошибка удаления бронирования: $e');
+    }
+  }
+
+  @override
   Future<void> updateBookingStatus(String bookingId, String newStatus) async {
     try {
       await _firestore.collection('bookings').doc(bookingId.toString()).update({
