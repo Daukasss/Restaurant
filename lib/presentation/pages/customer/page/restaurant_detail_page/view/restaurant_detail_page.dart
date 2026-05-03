@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:restauran/data/services/abstract/abstract_booking_service.dart';
 import 'package:restauran/data/services/abstract/abstract_category_closure_service.dart';
 import 'package:restauran/data/services/abstract/abstract_menu_service.dart';
@@ -10,6 +11,7 @@ import 'package:restauran/presentation/pages/customer/page/restaurant_detail_pag
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import '../../../widgets/fullscreen_image_viewer.dart';
 import '../../booking_page/view/booking_page.dart';
+import '../../../../auth/pages/login_page/view/login_page.dart';
 import '../bloc/restaurant_detail_bloc.dart';
 import '../bloc/restaurant_detail_event.dart';
 import '../bloc/restaurant_detail_state.dart';
@@ -346,6 +348,15 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
         child: ElevatedButton(
           onPressed: () {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user == null) {
+              // Гость — перенаправляем на логин
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+              return;
+            }
             Navigator.push(
               context,
               MaterialPageRoute(

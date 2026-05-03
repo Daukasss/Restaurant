@@ -24,4 +24,6 @@ class UpdateProfile extends ProfileEvent {
 
 class SignOut extends ProfileEvent {}
 
+class DeleteAccount extends ProfileEvent {}
+
 class ResetUpdateStatus extends ProfileEvent {}

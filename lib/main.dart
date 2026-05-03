@@ -86,6 +86,7 @@ Future<void> main() async {
             profileService: ProfileService(),
             bookingService: BookingService(),
             favoriteService: FavoriteService(),
+            authService: getIt<AbstractAuthServices>(),
           )..add(LoadUserData()),
         ),
         BlocProvider(

@@ -236,6 +236,26 @@ class AuthService implements AbstractAuthServices {
     return _auth.currentUser != null;
   }
 
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) throw Exception('Пользователь не авторизован');
+
+      // Удаляем профиль из Firestore
+      await _firestore.collection('profiles').doc(user.uid).delete();
+
+      // Удаляем аккаунт из Firebase Auth
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Ошибка удаления аккаунта: ${e.message}');
+      throw Exception('Ошибка удаления аккаунта: ${e.message}');
+    } catch (e) {
+      debugPrint('Ошибка удаления аккаунта: $e');
+      throw Exception('Ошибка удаления аккаунта: $e');
+    }
+  }
+
   // Вспомогательный метод для форматирования номера телефона
   String _formatPhoneNumber(String phone) {
     // Удаляем все нецифровые символы кроме +

@@ -5,6 +5,7 @@ import 'package:restauran/data/services/favorite_service.dart';
 import 'package:restauran/data/services/profile_service.dart';
 import '../../../../../../data/services/booking_service.dart';
 import '../../../../../../data/services/restaurant_service.dart';
+import '../../../../../../data/services/abstract/abstract_auth_services.dart';
 import 'profil_event.dart';
 import 'profil_state.dart';
 
@@ -13,20 +14,24 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final BookingService _bookingService;
   final FavoriteService _favoriteService;
   final RestaurantService _restaurantService;
+  final AbstractAuthServices _authService;
 
   ProfileBloc({
     required ProfileService profileService,
     required BookingService bookingService,
     required FavoriteService favoriteService,
     required RestaurantService restaurantService,
+    required AbstractAuthServices authService,
   })  : _profileService = profileService,
         _bookingService = bookingService,
         _favoriteService = favoriteService,
         _restaurantService = restaurantService,
-        super(const ProfileState()) {
+        _authService = authService,
+        super(ProfileState()) {
     on<LoadUserData>(_onLoadUserData);
     on<UpdateProfile>(_onUpdateProfile);
     on<SignOut>(_onSignOut);
+    on<DeleteAccount>(_onDeleteAccount);
     on<ResetUpdateStatus>(_onResetUpdateStatus);
   }
 
@@ -133,6 +138,22 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     await _profileService.signOut();
     emit(state.copyWith(isAuthenticated: false));
+  }
+
+  Future<void> _onDeleteAccount(
+    DeleteAccount event,
+    Emitter<ProfileState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      await _authService.deleteAccount();
+      emit(state.copyWith(isAuthenticated: false, isLoading: false));
+    } catch (error) {
+      emit(state.copyWith(
+        isLoading: false,
+        error: 'Ошибка удаления аккаунта!',
+      ));
+    }
   }
 
   void _onResetUpdateStatus(

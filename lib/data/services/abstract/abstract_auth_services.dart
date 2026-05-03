@@ -22,4 +22,7 @@ abstract class AbstractAuthServices {
 
   // Проверка аутентификации
   Future<bool> isAuthenticated();
+
+  // Удаление аккаунта
+  Future<void> deleteAccount();
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/data/models/profile.dart';
+import 'package:restauran/data/services/abstract/abstract_auth_services.dart';
+import 'package:restauran/data/services/service_locator.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import 'package:restauran/data/services/favorite_service.dart';
 import 'package:restauran/data/services/profile_service.dart';
@@ -28,6 +30,7 @@ class ProfilePage extends StatelessWidget {
         profileService: ProfileService(),
         bookingService: BookingService(),
         favoriteService: FavoriteService(),
+        authService: getIt<AbstractAuthServices>(),
       )..add(LoadUserData()),
       child: const ProfileView(),
     );
@@ -202,11 +205,28 @@ class _ProfileViewState extends State<ProfileView>
             child: Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: OutlinedButton(
-                onPressed: () {
-                  context.read<ProfileBloc>().add(SignOut());
-                },
-                child: const Text('Выйти из аккаунта'),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        context.read<ProfileBloc>().add(SignOut());
+                      },
+                      child: const Text('Выйти из аккаунта'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      onPressed: () => _showDeleteAccountDialog(context),
+                      child: const Text('Удалить аккаунт'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -250,6 +270,33 @@ class _ProfileViewState extends State<ProfileView>
       context,
       MaterialPageRoute(
         builder: (context) => const SellerDashboardPage(),
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить аккаунт'),
+        content: const Text(
+          'Вы уверены, что хотите удалить аккаунт? '
+          'Все данные будут удалены безвозвратно.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<ProfileBloc>().add(DeleteAccount());
+            },
+            child: const Text('Удалить'),
+          ),
+        ],
       ),
     );
   }

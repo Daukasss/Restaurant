@@ -170,9 +170,9 @@ class _AqToiState extends State<AqToi> with WidgetsBindingObserver {
 
           final user = snapshot.data;
           if (user == null) {
-            // Сбрасываем кэш при логауте
+            // Гостевой доступ — сразу на главную без логина
             _clearRoleCache();
-            return const LoginPage();
+            return const HomePage();
           }
 
           return FutureBuilder<String?>(

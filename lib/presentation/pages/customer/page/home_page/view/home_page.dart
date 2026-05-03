@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:restauran/presentation/widgets/search_bar.dart';
 import '../../../widgets/restaurant_card.dart';
 import '../../profile_page/view/profile_page.dart';
 import '../../restaurant_detail_page/view/restaurant_detail_page.dart';
+import '../../../../auth/pages/login_page/view/login_page.dart';
 
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
@@ -111,12 +113,22 @@ class _HomeViewState extends State<HomeView> {
                       IconButton(
                         icon: const Icon(Icons.person_outline_rounded),
                         onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ProfilePage(),
-                            ),
-                          );
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user == null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                            );
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProfilePage(),
+                              ),
+                            );
+                          }
                         },
                       ),
                     ],
