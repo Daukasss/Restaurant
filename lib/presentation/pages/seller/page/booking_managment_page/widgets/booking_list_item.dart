@@ -68,8 +68,8 @@ class BookingListItem extends StatelessWidget {
         isToday ? 'today' : (booking['status']?.toString() ?? 'pending');
 
     return Card(
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 0.1,
+      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),

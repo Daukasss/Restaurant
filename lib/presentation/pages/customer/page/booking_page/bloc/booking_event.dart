@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../../../data/models/booking.dart';
-import '../../../../../../data/models/category_closure.dart';
 
 abstract class BookingEvent extends Equatable {
   const BookingEvent();
@@ -314,12 +313,14 @@ class SelectManagementCategoryEvent extends BookingEvent {
 class LoadBookingsForCategoryEvent extends BookingEvent {
   final String restaurantId;
   final String categoryId;
+  final int? categorySection;
   const LoadBookingsForCategoryEvent({
     required this.restaurantId,
     required this.categoryId,
+    this.categorySection,
   });
   @override
-  List<Object?> get props => [restaurantId, categoryId];
+  List<Object?> get props => [restaurantId, categoryId, categorySection];
 }
 
 /// НОВОЕ: Вычислить недоступные даты для пользователя по выбранной категории.
@@ -329,7 +330,7 @@ class LoadBookingsForCategoryEvent extends BookingEvent {
 class LoadUnavailableDatesForCategoryEvent extends BookingEvent {
   final String restaurantId;
   final String categoryId;
-  final int categorySection;
+  final int? categorySection;
   final String? excludeBookingId;
 
   const LoadUnavailableDatesForCategoryEvent({

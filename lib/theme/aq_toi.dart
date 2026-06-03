@@ -170,7 +170,6 @@ class _AqToiState extends State<AqToi> with WidgetsBindingObserver {
 
           final user = snapshot.data;
           if (user == null) {
-            // Гостевой доступ — сразу на главную без логина
             _clearRoleCache();
             return const HomePage();
           }
@@ -204,7 +203,7 @@ class _LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      body: Center(child: CircularProgressIndicator.adaptive()),
     );
   }
 }

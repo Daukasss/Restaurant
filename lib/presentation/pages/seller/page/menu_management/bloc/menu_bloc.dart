@@ -65,24 +65,46 @@ class MenuBloc extends Bloc<MenuEvent, MenuState> {
   }
 
   Future<void> _onSelectRestaurantCategory(
-      SelectRestaurantCategory event, Emitter<MenuState> emit) async {
-    emit(MenuLoading());
+    SelectRestaurantCategory event,
+    Emitter<MenuState> emit,
+  ) async {
+    final currentState = state;
+
+    if (currentState is! MenuLoaded) return;
+
+    emit(
+      currentState.copyWith(
+        selectedRestaurantCategoryId: event.restaurantCategoryId,
+        isCategoryLoading: true,
+      ),
+    );
+
     try {
       final categories =
           await _menuService.getMenuCategoriesByRestaurantCategory(
-              event.restaurantId, event.restaurantCategoryId);
+        event.restaurantId,
+        event.restaurantCategoryId,
+      );
 
-      final restaurantCategories =
-          await _menuService.getRestaurantCategories(event.restaurantId);
-
-      emit(MenuLoaded(
-        categories,
-        restaurantCategories: restaurantCategories,
-        selectedRestaurantCategoryId: event.restaurantCategoryId,
-      ));
+      emit(
+        currentState.copyWith(
+          categories: categories,
+          selectedRestaurantCategoryId: event.restaurantCategoryId,
+          isCategoryLoading: false,
+        ),
+      );
     } catch (error) {
-      emit(MenuError(
-          'Failed to load menu for selected category: ${error.toString()}'));
+      emit(
+        currentState.copyWith(
+          isCategoryLoading: false,
+        ),
+      );
+
+      emit(
+        MenuError(
+          'Failed to load menu for selected category: ${error.toString()}',
+        ),
+      );
     }
   }
 

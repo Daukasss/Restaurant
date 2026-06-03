@@ -172,7 +172,7 @@ class BookingConfirmationPage extends StatelessWidget {
                       ),
                     ] else if (state is BookingConfirmationLoading) ...[
                       const SizedBox(height: 24),
-                      const Center(child: CircularProgressIndicator()),
+                      const Center(child: CircularProgressIndicator.adaptive()),
                     ] else if (menuSelections == null ||
                         menuSelections!.isEmpty) ...[
                       const SizedBox(height: 24),

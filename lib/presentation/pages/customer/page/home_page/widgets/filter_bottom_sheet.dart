@@ -110,7 +110,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             stream: _categoriesStream,
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                    child: CircularProgressIndicator.adaptive());
               }
 
               final categories = snapshot.data!.docs.map((doc) {

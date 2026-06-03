@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:restauran/theme/app_colors.dart';
 
 class RestaurantCard extends StatelessWidget {
   final Map<String, dynamic> restaurant;
@@ -24,195 +25,270 @@ class RestaurantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (restaurant['image_url'] != null &&
-              restaurant['image_url'].isNotEmpty)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-              ),
-              child: Image.network(
-                restaurant['image_url'],
-                height: 150,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        restaurant['name'] ?? 'Нет названия',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    // Попап меню заблокирован офлайн
-                    if (!isOffline)
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        onSelected: (value) {
-                          if (value == 'edit') onEdit();
-                          if (value == 'delete') onDelete();
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit),
-                                SizedBox(width: 8),
-                                Text('Редактировать'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red),
-                                SizedBox(width: 8),
-                                Text('Удалить',
-                                    style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      Tooltip(
-                        message: 'Недоступно офлайн',
-                        child: Icon(Icons.more_vert, color: Colors.grey[400]),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        restaurant['location'] ?? 'Нет адреса',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  children: [
-                    Row(
+    final String name = (restaurant['name'] ?? 'Нет названия').toString();
+    final String location = (restaurant['location'] ?? 'Нет адреса').toString();
+    final String? imageUrl = restaurant['image_url']?.toString();
+    final bool hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+    return InkWell(
+      onTap: isOffline ? null : onEdit,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+          boxShadow: AppColors.softShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Верхняя часть: фото + инфо + edit/delete ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Фото ──
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: hasImage
+                        ? Image.network(
+                            imageUrl,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _PlaceholderImage(),
+                          )
+                        : _PlaceholderImage(),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // ── Название + адрес ──
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _OfflineAwareButton(
-                            isOffline: isOffline,
-                            onPressed: onEdit,
-                            icon: Icons.edit,
-                            label: 'Edit',
-                            outlined: true,
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textMain,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _OfflineAwareButton(
-                            isOffline: isOffline,
-                            onPressed: onMenuManagement,
-                            icon: Icons.restaurant_menu,
-                            label: 'Меню',
-                            outlined: true,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_outlined,
+                                size: 13, color: AppColors.textSub),
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                location,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.textSub),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                  ),
 
-                    // ✅ Брони — единственная кнопка, активная офлайн
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: onBookingManagement,
-                        icon: const Icon(Icons.calendar_today),
-                        label: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Брони', style: TextStyle(fontSize: 13)),
-                          ],
+                  // ── Иконки edit / delete ──
+                  Column(
+                    children: [
+                      // _IconAction(
+                      //   icon: Icons.edit_outlined,
+                      //   color: AppColors.primary,
+                      //   onTap: isOffline ? null : onEdit,
+                      //   isOffline: isOffline,
+                      // ),
+                      const SizedBox(height: 6),
+                      _IconAction(
+                        icon: Icons.delete_outline_rounded,
+                        color: AppColors.danger,
+                        onTap: isOffline ? null : onDelete,
+                        isOffline: isOffline,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Разделитель ──
+            Divider(height: 1, color: AppColors.divider),
+
+            // ── Кнопки действий ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                children: [
+                  // Брони — полная ширина, всегда активна
+                  _ActionButton(
+                    icon: Icons.calendar_today_rounded,
+                    label: 'Брони',
+                    onTap: onBookingManagement,
+                    isPrimary: true,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.restaurant_menu_rounded,
+                          label: 'Меню',
+                          onTap: isOffline ? null : onMenuManagement,
+                          isOffline: isOffline,
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _OfflineAwareButton(
-                        isOffline: isOffline,
-                        onPressed: onManualBooking,
-                        icon: Icons.add,
-                        label: 'Ручная бронь',
-                        outlined: true,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ActionButton(
+                          icon: Icons.add_circle_outline_rounded,
+                          label: 'Ручная бронь',
+                          onTap: isOffline ? null : onManualBooking,
+                          isOffline: isOffline,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Кнопка, которая показывает тултип «Недоступно офлайн» когда isOffline=true
-class _OfflineAwareButton extends StatelessWidget {
-  final bool isOffline;
-  final VoidCallback onPressed;
-  final IconData icon;
-  final String label;
-  final bool outlined;
+// ── Фото-заглушка ─────────────────────────────────────────────────────────
+class _PlaceholderImage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: const Icon(Icons.storefront_rounded,
+          color: AppColors.primary, size: 28),
+    );
+  }
+}
 
-  const _OfflineAwareButton({
-    required this.isOffline,
-    required this.onPressed,
+// ── Иконка-кнопка (edit/delete) ───────────────────────────────────────────
+class _IconAction extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+  final bool isOffline;
+
+  const _IconAction({
     required this.icon,
-    required this.label,
-    this.outlined = false,
+    required this.color,
+    this.onTap,
+    this.isOffline = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final Widget button = outlined
-        ? OutlinedButton.icon(
-            onPressed: isOffline ? null : onPressed,
-            icon: Icon(icon),
-            label: Text(label, style: const TextStyle(fontSize: 13)),
-          )
-        : ElevatedButton.icon(
-            onPressed: isOffline ? null : onPressed,
-            icon: Icon(icon),
-            label: Text(label, style: const TextStyle(fontSize: 13)),
-          );
+    final effectiveColor = isOffline ? Colors.grey[350]! : color;
+
+    final widget = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: effectiveColor.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: effectiveColor),
+      ),
+    );
 
     if (isOffline) {
-      return Tooltip(
-        message: 'Недоступно без интернета',
-        child: button,
-      );
+      return Tooltip(message: 'Недоступно офлайн', child: widget);
     }
+    return widget;
+  }
+}
 
-    return button;
+// ── Кнопка действия ───────────────────────────────────────────────────────
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool isPrimary;
+  final bool isOffline;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+    this.isPrimary = false,
+    this.isOffline = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    final Color bgColor = isPrimary
+        ? AppColors.primary
+        : disabled
+            ? Colors.grey[100]!
+            : AppColors.primary.withOpacity(0.06);
+    final Color fgColor = isPrimary
+        ? Colors.white
+        : disabled
+            ? Colors.grey[400]!
+            : AppColors.primary;
+    final Color borderColor = isPrimary
+        ? Colors.transparent
+        : disabled
+            ? Colors.grey[200]!
+            : AppColors.primary.withOpacity(0.2);
+
+    final btn = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: fgColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: fgColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (isOffline && disabled) {
+      return Tooltip(message: 'Недоступно без интернета', child: btn);
+    }
+    return btn;
   }
 }

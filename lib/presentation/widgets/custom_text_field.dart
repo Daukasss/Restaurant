@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:restauran/theme/app_colors.dart';
 
 class CustomTextField extends StatefulWidget {
   final TextEditingController? controller;
@@ -86,6 +87,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
           ? null
           : 1,
       decoration: InputDecoration(
+        fillColor: AppColors.surface,
         hintText: widget.hintText,
         prefixIcon: widget.prefixIcon != null ? Icon(widget.prefixIcon) : null,
         suffixIcon: widget.suffixIcon,

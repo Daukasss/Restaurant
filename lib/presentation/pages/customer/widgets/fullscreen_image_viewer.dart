@@ -56,7 +56,9 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
               loadingBuilder: (_, child, progress) {
                 if (progress == null) return child;
                 return const Center(
-                    child: CircularProgressIndicator(color: Colors.white));
+                    child: CircularProgressIndicator.adaptive(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white)));
               },
             ),
           );

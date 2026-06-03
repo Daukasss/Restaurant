@@ -55,7 +55,8 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
             },
             builder: (context, state) {
               if (state is AdminPanelLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return const Center(
+                    child: CircularProgressIndicator.adaptive());
               }
 
               if (state is AdminPanelLoaded) {

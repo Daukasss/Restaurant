@@ -42,15 +42,19 @@ class _SellerDateManagementPageState extends State<SellerDateManagementPage> {
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(
-        backgroundColor: _primary,
+        backgroundColor: _surface,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: _textMain),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         elevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: true,
-        title: const Text(
-          'Управление датами',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-        ),
+        // title: const Text(
+        //   'Управление датами',
+        //   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        // ),
       ),
       body: BlocConsumer<BookingBloc, BookingState>(
         listener: (context, state) {
@@ -66,9 +70,8 @@ class _SellerDateManagementPageState extends State<SellerDateManagementPage> {
               ),
             );
             // Сбрасываем сообщение через emit напрямую на блоке
-            context
-                .read<BookingBloc>()
-                .emit(state.copyWith(clearClosureSuccessMessage: true));
+            context.read<BookingBloc>();
+            // .emit(state.copyWith(clearClosureSuccessMessage: true));
           }
           // Показываем снекбар ошибки
           if (state.errorMessage != null) {
@@ -85,10 +88,10 @@ class _SellerDateManagementPageState extends State<SellerDateManagementPage> {
         },
         builder: (context, state) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
             children: [
               // ── Баннер-инструкция ──────────────────────────────────────
-              _InfoBanner(
+              const _InfoBanner(
                 icon: Icons.info_outline_rounded,
                 text:
                     'Выберите категорию и нажмите на дату чтобы заблокировать время.',
@@ -117,7 +120,7 @@ class _SellerDateManagementPageState extends State<SellerDateManagementPage> {
                       const Padding(
                         padding: EdgeInsets.all(24),
                         child: Center(
-                          child: CircularProgressIndicator(color: _primary),
+                          child: CircularProgressIndicator.adaptive(),
                         ),
                       )
                     else if (state.restaurantCategories.isEmpty)
@@ -179,8 +182,9 @@ class _SellerDateManagementPageState extends State<SellerDateManagementPage> {
                               const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: _accent),
+                                child: CircularProgressIndicator.adaptive(
+                                  strokeWidth: 2,
+                                ),
                               ),
                           ],
                         ),
@@ -984,8 +988,10 @@ class _AddClosureBottomSheetState extends State<_AddClosureBottomSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator.adaptive(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                  strokeWidth: 2),
                             )
                           : const Text(
                               'Заблокировать',
@@ -1240,6 +1246,7 @@ class _CalendarDayWithTwoDots extends StatelessWidget {
     required this.dot1Color,
     required this.dot2Color,
     required this.isSelected,
+    // ignore: unused_element_parameter
     this.isToday = false,
   });
 

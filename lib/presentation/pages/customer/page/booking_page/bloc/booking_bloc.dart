@@ -6,7 +6,6 @@ import '../../../../../../data/models/booking.dart';
 import '../../../../../../data/models/category_closure.dart';
 import '../../../../../../data/services/abstract/service_export.dart';
 import '../../../../../../data/services/abstract/abstract_category_closure_service.dart';
-import '../../../../../../data/services/push_notification_service.dart';
 import 'booking_event.dart';
 import 'booking_state.dart';
 
@@ -53,12 +52,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   }
 
   // ─── Вспомогательные ─────────────────────────────────────────────────────
-
-  static String _fmtDate(DateTime dt) =>
-      '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
-
-  static String _fmtTime(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
   TimeOfDay _minutesToTimeOfDay(int minutes) {
     return TimeOfDay(
@@ -194,9 +187,14 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     SelectRestaurantCategoryEvent event,
     Emitter<BookingState> emit,
   ) async {
+    // Сразу выставляем isUnavailableDatesLoading: true вместе со сбросом дат,
+    // чтобы кнопка календаря была заблокирована до окончания загрузки.
+    // Без этого между clearUnavailableDates и фактическим стартом
+    // LoadUnavailableDatesForCategoryEvent флаг мог быть false — race condition.
     emit(state.copyWith(
       selectedRestaurantCategoryId: event.categoryId,
       clearUnavailableDates: true,
+      isUnavailableDatesLoading: true,
     ));
 
     try {
@@ -609,9 +607,15 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       restaurantId: event.restaurantId,
       categoryId: event.categoryId,
     ));
+    // Передаём секцию выбранной категории, чтобы загрузить брони
+    // всех категорий той же секции, а не только выбранной.
+    final selectedCat = state.restaurantCategories
+        .where((c) => c.id == event.categoryId)
+        .firstOrNull;
     add(LoadBookingsForCategoryEvent(
       restaurantId: event.restaurantId,
       categoryId: event.categoryId,
+      categorySection: selectedCat?.section,
     ));
   }
 
@@ -712,19 +716,62 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     try {
       emit(state.copyWith(isBookingsForCategoryLoading: true));
 
-      final snapshot = await FirebaseFirestore.instance
-          .collection('bookings')
-          .where('restaurant_id', isEqualTo: event.restaurantId)
-          .where('restaurant_category_id', isEqualTo: event.categoryId)
-          .where('status', whereIn: ['pending', 'confirmed'])
-          .orderBy('booking_date', descending: false)
-          .get();
+      List<Booking> bookings;
 
-      final bookings = snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return Booking.fromJson(data);
-      }).toList();
+      if (event.categorySection != null) {
+        // Загружаем брони всех категорий той же секции.
+        // Firestore не поддерживает JOIN, поэтому сначала получаем
+        // ID всех категорий нужной секции, потом грузим брони.
+        final catSnapshot = await FirebaseFirestore.instance
+            .collection('restaurant_categories')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .where('section', isEqualTo: event.categorySection)
+            .get();
+
+        final categoryIds = catSnapshot.docs.map((d) => d.id).toList();
+        // Если по какой-то причине список пуст — добавляем текущую категорию
+        if (categoryIds.isEmpty) categoryIds.add(event.categoryId);
+
+        // Firestore whereIn ограничен 30 элементами — делим на чанки
+        final allBookings = <Booking>[];
+        for (int i = 0; i < categoryIds.length; i += 30) {
+          final chunk = categoryIds.sublist(
+            i,
+            (i + 30).clamp(0, categoryIds.length),
+          );
+          final snapshot = await FirebaseFirestore.instance
+              .collection('bookings')
+              .where('restaurant_id', isEqualTo: event.restaurantId)
+              .where('restaurant_category_id', whereIn: chunk)
+              .where('status', whereIn: ['pending', 'confirmed'])
+              .orderBy('booking_date', descending: false)
+              .get();
+
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            allBookings.add(Booking.fromJson(data));
+          }
+        }
+        // Сортируем итоговый список по дате
+        allBookings.sort((a, b) => a.bookingDate.compareTo(b.bookingDate));
+        bookings = allBookings;
+      } else {
+        // Старое поведение — только по конкретной категории
+        final snapshot = await FirebaseFirestore.instance
+            .collection('bookings')
+            .where('restaurant_id', isEqualTo: event.restaurantId)
+            .where('restaurant_category_id', isEqualTo: event.categoryId)
+            .where('status', whereIn: ['pending', 'confirmed'])
+            .orderBy('booking_date', descending: false)
+            .get();
+
+        bookings = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return Booking.fromJson(data);
+        }).toList();
+      }
 
       emit(state.copyWith(
         bookingsForCategory: bookings,
@@ -735,7 +782,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       emit(state.copyWith(isBookingsForCategoryLoading: false));
     }
   }
-
   // ─── Недоступные даты для юзера ──────────────────────────────────────────
 
   Future<void> _onLoadUnavailableDatesForCategory(

@@ -129,15 +129,7 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
           isLoading: false,
           restaurantId: event.restaurantId,
         ));
-
-        print('Состояние после emit (основные поля):');
-        print('name → ${restaurant.name}');
-        print('phones → $phones');
-        print('photos → ${restaurant.photos?.length ?? 0} шт');
-        print('bookedDates → ${restaurant.bookedDates?.length ?? 0} дат');
       } else {
-        print('event.restaurant == null → это создание нового ресторана');
-
         // Генерируем ID заранее, чтобы фото можно было загружать до сохранения ресторана
         final newRestaurantId = event.restaurantId.isNotEmpty
             ? event.restaurantId
@@ -149,20 +141,13 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
           isEditing: false,
         ));
       }
-
+      add(LoadAvailableGlobalCategories(event.restaurantId));
       // Загрузка дополнительных данных
       if (event.restaurantId.isNotEmpty) {
-        print(
-            'Запускаем загрузку категорий и extras для id: ${event.restaurantId}');
-        add(LoadAvailableGlobalCategories(event.restaurantId));
         add(LoadRestaurantCategories(event.restaurantId));
         add(LoadRestaurantExtras(event.restaurantId));
       }
-    } catch (e, stack) {
-      print('!!! ОШИБКА в _onLoadRestaurantData !!!');
-      print('Error: $e');
-      print('Stack:\n$stack');
-
+    } catch (e) {
       emit(state.copyWith(
         isLoading: false,
         error: 'Не удалось загрузить данные ресторана: $e',

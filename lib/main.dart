@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -30,13 +31,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ─── Hive ──────────────────────────────────────────────────────────────────
+  // Hive
   await Hive.initFlutter();
   if (!Hive.isAdapterRegistered(0)) {
     Hive.registerAdapter(BookingHiveModelAdapter());
   }
 
-  // ─── Firebase ─────────────────────────────────────────────────────────────
+  // Firebase
   // Обёрнуто в try/catch — Firebase.initializeApp может упасть офлайн
   try {
     if (Firebase.apps.isEmpty) {
@@ -59,7 +60,11 @@ Future<void> main() async {
 
   // Фоновый обработчик — ОБЯЗАТЕЛЬНО до runApp
   try {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    if (!kIsWeb) {
+      FirebaseMessaging.onBackgroundMessage(
+        _firebaseMessagingBackgroundHandler,
+      );
+    }
   } catch (e) {
     debugPrint('⚠️ FirebaseMessaging setup error: $e');
   }
@@ -102,7 +107,9 @@ Future<void> main() async {
   _initPushNotifications();
 
   // ─── Фоновая синхронизация (не блокирует UI) ──────────────────────────────
-  _initBackgroundSync();
+  if (!kIsWeb) {
+    _initBackgroundSync();
+  }
 }
 
 /// Инициализация push-уведомлений с защитой от зависания.

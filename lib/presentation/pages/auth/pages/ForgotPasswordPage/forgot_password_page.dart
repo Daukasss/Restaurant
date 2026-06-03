@@ -79,7 +79,7 @@
 //                 child: ElevatedButton(
 //                   onPressed: _isLoading ? null : _resetPassword,
 //                   child: _isLoading
-//                       ? const CircularProgressIndicator(color: Colors.white)
+//                       ? const CircularProgressIndicator.adaptive(backgroundColor: Colors.white)
 //                       : const Text("Восстановить пароль"),
 //                 ),
 //               ),

@@ -621,7 +621,8 @@ class _AdminCategoriesTabState extends State<AdminCategoriesTab> {
               },
               builder: (context, state) {
                 if (state is AdminCategoryLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                      child: CircularProgressIndicator.adaptive());
                 }
 
                 if (state is AdminCategoryLoaded) {

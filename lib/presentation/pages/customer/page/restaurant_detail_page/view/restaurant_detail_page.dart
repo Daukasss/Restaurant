@@ -19,7 +19,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 class RestaurantDetailPage extends StatelessWidget {
   final String restaurantId;
-
   const RestaurantDetailPage({super.key, required this.restaurantId});
 
   @override
@@ -34,7 +33,6 @@ class RestaurantDetailPage extends StatelessWidget {
 
 class RestaurantDetailView extends StatefulWidget {
   final String restaurantId;
-
   const RestaurantDetailView({super.key, required this.restaurantId});
 
   @override
@@ -85,15 +83,11 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                 Text(
                   phoneNumber,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(
-                    Icons.phone,
-                  ),
+                  leading: const Icon(Icons.phone),
                   title: const Text('Позвонить'),
                   onTap: () {
                     Navigator.pop(context);
@@ -107,9 +101,8 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                   title: const Text('Написать в WhatsApp'),
                   onTap: () {
                     Navigator.pop(context);
-                    String cleanPhone = phoneNumber.replaceAll(
-                        RegExp(r'[^\d]'), ''); // только цифры
-
+                    String cleanPhone =
+                        phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
                     if (cleanPhone.startsWith('8') && cleanPhone.length == 11) {
                       cleanPhone = '+7${cleanPhone.substring(1)}';
                     } else if (cleanPhone.startsWith('7') &&
@@ -119,7 +112,6 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                         cleanPhone.length == 11) {
                       cleanPhone = '+$cleanPhone';
                     }
-
                     launchUrl(
                       Uri.parse(
                           'https://wa.me/${cleanPhone.replaceAll('+', '')}'),
@@ -156,7 +148,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
       builder: (context, state) {
         if (state.isLoading) {
           return const Scaffold(
-              body: Center(child: CircularProgressIndicator()));
+              body: Center(child: CircularProgressIndicator.adaptive()));
         }
 
         return Scaffold(
@@ -164,29 +156,43 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
             children: [
               Expanded(
                 child: NestedScrollView(
-                  headerSliverBuilder: (context, innerBoxIsScrolled) {
-                    return [
-                      _buildSliverAppBar(context, state),
-                    ];
-                  },
-                  body: Column(
-                    children: [
-                      TabBar(
-                        controller: _tabController,
-                        tabs: const [Tab(text: 'Обзор'), Tab(text: 'Меню')],
-                      ),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildOverviewTab(state),
-                            BuildMenuTab(context: context, state: state),
-                          ],
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [_buildSliverAppBar(context, state)];
+                    },
+                    body: Column(
+                      children: [
+                        // Container(
+                        //   decoration: const BoxDecoration(
+                        //     color: Colors.white,
+                        //     borderRadius: BorderRadius.vertical(
+                        //       top: Radius.circular(30),
+                        //     ),
+                        //   ),
+                        //   child: TabBar(
+                        //     controller: _tabController,
+                        //     tabs: const [
+                        //       Tab(text: 'Обзор'),
+                        //       Tab(text: 'Меню'),
+                        //     ],
+                        //   ),
+                        // ),
+                        SizedBox(
+                          height: 40,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                        Expanded(
+                          child: Transform.translate(
+                            offset: const Offset(0, -30),
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                _buildOverviewTab(state),
+                                BuildMenuTab(context: context, state: state),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    )),
               ),
             ],
           ),
@@ -198,40 +204,61 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
 
   Widget _buildSliverAppBar(BuildContext context, RestaurantDetailState state) {
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 320, // чуть увеличил
       pinned: true,
+      floating: false,
+      backgroundColor: Colors.white,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           children: [
-            state.photoUrls.isEmpty
-                ? Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                        child: Icon(Icons.image_not_supported, size: 50)),
-                  )
-                : PageView.builder(
-                    itemCount: state.photoUrls.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () => _openImageViewer(state.photoUrls, index),
-                        child: Image.network(
-                          state.photoUrls[index],
-                          fit: BoxFit.cover,
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null
-                                  ? child
-                                  : const Center(
-                                      child: CircularProgressIndicator()),
-                          errorBuilder: (_, __, ___) => Container(
-                              color: Colors.grey,
-                              child: const Icon(Icons.broken_image)),
-                        ),
-                      );
-                    },
-                  ),
+            // Изображение
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(30),
+              ),
+              child: state.photoUrls.isEmpty
+                  ? Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.image_not_supported, size: 50),
+                      ),
+                    )
+                  : PageView.builder(
+                      itemCount: state.photoUrls.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () => _openImageViewer(state.photoUrls, index),
+                          child: Image.network(
+                            state.photoUrls[index],
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // Градиент
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(30),
+                ),
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.55),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+
+            // Название ресторана
             Positioned(
-              bottom: 16,
+              bottom: 70, // поднял выше, чтобы место для табов было
               left: 16,
+              right: 16,
               child: Text(
                 state.restaurant?['name'] ?? '',
                 style: const TextStyle(
@@ -242,22 +269,32 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                 ),
               ),
             ),
+
+            // ←←← Табы поверх изображения
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
+                ),
+                child: TabBar(
+                  dividerColor: Colors.transparent,
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: 'Обзор'),
+                    Tab(text: 'Меню'),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            state.isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: state.isFavorite ? Colors.red : Colors.white,
-          ),
-          onPressed: () {
-            context
-                .read<RestaurantDetailBloc>()
-                .add(ToggleFavorite(widget.restaurantId));
-          },
-        ),
-      ],
     );
   }
 
@@ -268,7 +305,6 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
     if (phones is List && phones.isNotEmpty) {
       phoneNumbers = phones.map((p) => p.toString()).toList();
     } else {
-      // Старый формат - один телефон в виде строки (для обратной совместимости)
       final phoneString = (state.restaurant?['phone'] ?? '').toString();
       phoneNumbers = phoneString
           .split(RegExp(r'[,\n]'))
@@ -292,19 +328,15 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ...state.restaurantCategories.map((category) {
               return ListTile(
-                title: Text(
-                  category.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+                title: Text(category.name,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: category.description != null
                     ? Text(category.description!)
                     : null,
                 trailing: Text(
                   '${category.priceRange.toStringAsFixed(0)} ₸',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               );
             }),
@@ -314,10 +346,7 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (phoneNumbers.isEmpty)
-            const ListTile(
-              leading: Icon(Icons.phone),
-              title: Text('Не указан'),
-            )
+            const ListTile(leading: Icon(Icons.phone), title: Text('Не указан'))
           else
             ...phoneNumbers.map((phone) => ListTile(
                   leading: const Icon(Icons.phone),
@@ -350,13 +379,11 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
           onPressed: () {
             final user = FirebaseAuth.instance.currentUser;
             if (user == null) {
-              // Гость — перенаправляем на логин
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-              );
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()));
               return;
             }
+
             Navigator.push(
               context,
               MaterialPageRoute(

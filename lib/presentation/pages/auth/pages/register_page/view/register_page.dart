@@ -206,8 +206,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                           phone: _phoneController.text);
                                     },
                               child: isLoading
-                                  ? const CircularProgressIndicator(
-                                      color: Colors.white)
+                                  ? const CircularProgressIndicator.adaptive(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white))
                                   : const Text('Отправить код'),
                             ),
                           ),

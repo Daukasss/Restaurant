@@ -162,8 +162,9 @@ class _LoginViewState extends State<LoginView> {
                                         );
                                   },
                             child: isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
+                                ? const CircularProgressIndicator.adaptive(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white))
                                 : const Text('Войти'),
                           ),
                         );

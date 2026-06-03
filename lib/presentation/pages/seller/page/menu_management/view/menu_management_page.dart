@@ -9,6 +9,7 @@ import 'package:restauran/data/services/menu_service.dart';
 import 'package:restauran/presentation/pages/seller/widgets/menu_category_card.dart';
 import 'package:restauran/presentation/pages/seller/widgets/menu_item_dialog.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
+import 'package:restauran/theme/app_colors.dart';
 
 import '../../../widgets/category_dialog.dart';
 import '../bloc/menu_bloc.dart';
@@ -118,18 +119,21 @@ class _MenuManagementView extends StatelessWidget {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Удалить категорию'),
-          content: const SingleChildScrollView(
-            child: Text(
-                'Вы уверены, что хотите удалить эту категорию? Все блюда в этой категории также будут удалены. Это действие нельзя отменить.'),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Удалить категорию',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          content: const Text(
+              'Вы уверены? Все блюда в этой категории также будут удалены. Это действие нельзя отменить.'),
           actions: [
             TextButton(
-              child: const Text('Отмена'),
+              child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+              child: const Text('Удалить',
+                  style: TextStyle(
+                      color: AppColors.danger, fontWeight: FontWeight.w600)),
               onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
@@ -187,18 +191,21 @@ class _MenuManagementView extends StatelessWidget {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Удалить блюдо'),
-          content: const SingleChildScrollView(
-            child: Text(
-                'Вы уверены, что хотите удалить это блюдо? Это действие нельзя отменить.'),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('Удалить блюдо',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          content: const Text(
+              'Вы уверены, что хотите удалить это блюдо? Это действие нельзя отменить.'),
           actions: [
             TextButton(
-              child: const Text('Отмена'),
+              child: Text('Отмена', style: TextStyle(color: Colors.grey[600])),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+              child: const Text('Удалить',
+                  style: TextStyle(
+                      color: AppColors.danger, fontWeight: FontWeight.w600)),
               onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
@@ -213,191 +220,332 @@ class _MenuManagementView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Меню - $restaurantName')),
-      body: BlocConsumer<MenuBloc, MenuState>(
-        listener: (context, state) {
-          if (state is MenuError) {
-            showResultDialog(
-                context: context,
-                isSuccess: false,
-                title: 'Ошибка',
-                message: state.message);
-          } else if (state is CategoryAdded) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Категория успешно добавлена');
-          } else if (state is CategoryUpdated) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Категория успешно обновлена');
-          } else if (state is CategoryDeleted) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Категория успешно удалена');
-          } else if (state is MenuItemAdded) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Блюдо успешно добавлено');
-          } else if (state is MenuItemUpdated) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Блюдо успешно обновлено');
-          } else if (state is MenuItemDeleted) {
-            showResultDialog(
-                context: context,
-                isSuccess: true,
-                title: 'Успешно',
-                message: 'Блюдо успешно удалено');
-          }
-        },
-        builder: (context, state) {
-          if (state is MenuLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is MenuLoaded) {
-            final categories = state.categories;
-            final restaurantCategories = state.restaurantCategories;
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: AppColors.textMain),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Меню',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textMain,
+          ),
+        ),
+        actions: [
+          BlocBuilder<MenuBloc, MenuState>(
+            builder: (context, state) {
+              String? restaurantCategoryId;
+              List<Map<String, dynamic>> restaurantCategories = [];
+              if (state is MenuLoaded) {
+                restaurantCategoryId = state.selectedRestaurantCategoryId;
+                restaurantCategories = state.restaurantCategories;
+              }
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: TextButton.icon(
+                  onPressed: () => _addCategory(
+                      context, restaurantCategoryId, restaurantCategories),
+                  icon: const Icon(Icons.add_rounded,
+                      size: 18, color: AppColors.primary),
+                  label: const Text(
+                    'Категория',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                          color: AppColors.primary.withOpacity(0.25), width: 1),
+                    ),
+                    backgroundColor: AppColors.primary.withOpacity(0.06),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: BlocConsumer<MenuBloc, MenuState>(
+          listener: (context, state) {
+            if (state is MenuError) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: false,
+                  title: 'Ошибка',
+                  message: state.message);
+            } else if (state is CategoryAdded) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Категория успешно добавлена');
+            } else if (state is CategoryUpdated) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Категория успешно обновлена');
+            } else if (state is CategoryDeleted) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Категория успешно удалена');
+            } else if (state is MenuItemAdded) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Блюдо успешно добавлено');
+            } else if (state is MenuItemUpdated) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Блюдо успешно обновлено');
+            } else if (state is MenuItemDeleted) {
+              showResultDialog(
+                  context: context,
+                  isSuccess: true,
+                  title: 'Успешно',
+                  message: 'Блюдо успешно удалено');
+            }
+          },
+          builder: (context, state) {
+            if (state is MenuLoading) {
+              return const Center(child: CircularProgressIndicator.adaptive());
+            } else if (state is MenuLoaded) {
+              final categories = state.categories;
+              final restaurantCategories = state.restaurantCategories;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (restaurantCategories.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Center(
-                          child: Text(
-                            'Выберите категорию ресторана:',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: restaurantCategories.map((cat) {
-                              final isSelected =
-                                  state.selectedRestaurantCategoryId ==
-                                      cat['id'];
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: FilterChip(
-                                  label: Text(
-                                      '${cat['name']} - \$${cat['price_range']}'),
-                                  selected: isSelected,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      context.read<MenuBloc>().add(
-                                            SelectRestaurantCategory(
-                                                restaurantId, cat['id']),
-                                          );
-                                    }
-                                  },
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Фильтр по категориям ресторана ──
+                  if (restaurantCategories.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: restaurantCategories.map((cat) {
+                            final isSelected =
+                                state.selectedRestaurantCategoryId == cat['id'];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (!isSelected) {
+                                    context.read<MenuBloc>().add(
+                                          SelectRestaurantCategory(
+                                              restaurantId, cat['id']),
+                                        );
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.divider,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${cat['name']}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : AppColors.textSub,
+                                    ),
+                                  ),
                                 ),
-                              );
-                            }).toList(),
-                          ),
+                              ),
+                            );
+                          }).toList(),
                         ),
+                      ),
+                    ),
+
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        categories.isEmpty
+                            ? _EmptyMenuState(
+                                onAddCategory: () => _addCategory(
+                                  context,
+                                  state.selectedRestaurantCategoryId,
+                                  restaurantCategories,
+                                ),
+                              )
+                            : ListView.builder(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                                itemCount: categories.length,
+                                itemBuilder: (context, index) {
+                                  return CategoryCard(
+                                    category: categories[index],
+                                    restaurantCategories: restaurantCategories,
+                                    onEditCategory: (category) => _editCategory(
+                                      context,
+                                      category,
+                                      restaurantCategories,
+                                    ),
+                                    onDeleteCategory: (id) =>
+                                        _showDeleteCategoryConfirmation(
+                                      context,
+                                      id ?? '',
+                                    ),
+                                    onAddMenuItem: (categoryId) => _addMenuItem(
+                                      context,
+                                      categoryId ?? '',
+                                    ),
+                                    onEditMenuItem: (menuItem) =>
+                                        _editMenuItem(context, menuItem),
+                                    onDeleteMenuItem: (id) =>
+                                        _showDeleteMenuItemConfirmation(
+                                      context,
+                                      id ?? '',
+                                    ),
+                                  );
+                                },
+                              ),
+                        if (state.isCategoryLoading)
+                          Positioned.fill(
+                            child: Container(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              child: const Center(
+                                child: CircularProgressIndicator.adaptive(),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                const Divider(),
-                Expanded(
-                  child: categories.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text('Категории меню отсутствуют',
-                                  style: TextStyle(fontSize: 16)),
-                              const SizedBox(height: 16),
-                              ElevatedButton.icon(
-                                onPressed: () => _addCategory(
-                                    context,
-                                    state.selectedRestaurantCategoryId,
-                                    restaurantCategories),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Добавить категорию'),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: categories.length,
-                          itemBuilder: (context, index) {
-                            return CategoryCard(
-                              category: categories[index],
-                              restaurantCategories: restaurantCategories,
-                              onEditCategory: (category) => _editCategory(
-                                  context, category, restaurantCategories),
-                              onDeleteCategory: (id) =>
-                                  _showDeleteCategoryConfirmation(
-                                      context, id ?? ''),
-                              onAddMenuItem: (categoryId) =>
-                                  _addMenuItem(context, categoryId ?? ''),
-                              onEditMenuItem: (menuItem) =>
-                                  _editMenuItem(context, menuItem),
-                              onDeleteMenuItem: (id) =>
-                                  _showDeleteMenuItemConfirmation(
-                                      context, id ?? ''),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          } else if (state is MenuError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 60),
-                  const SizedBox(height: 16),
-                  Text('Ошибка: ${state.message}',
-                      style: const TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context
-                        .read<MenuBloc>()
-                        .add(LoadMenuCategories(restaurantId)),
-                    child: const Text('Повторить'),
-                  ),
                 ],
-              ),
-            );
-          }
+              );
+            } else if (state is MenuError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline,
+                        color: AppColors.danger, size: 52),
+                    const SizedBox(height: 16),
+                    Text('Ошибка: ${state.message}',
+                        style: const TextStyle(
+                            fontSize: 15, color: AppColors.textSub),
+                        textAlign: TextAlign.center),
+                    const SizedBox(height: 20),
+                    TextButton(
+                      onPressed: () => context
+                          .read<MenuBloc>()
+                          .add(LoadMenuCategories(restaurantId)),
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-          return const Center(child: CircularProgressIndicator());
-        },
+            return const Center(child: CircularProgressIndicator.adaptive());
+          },
+        ),
       ),
-      floatingActionButton: BlocBuilder<MenuBloc, MenuState>(
-        builder: (context, state) {
-          String? restaurantCategoryId;
-          List<Map<String, dynamic>> restaurantCategories = [];
-          if (state is MenuLoaded) {
-            restaurantCategoryId = state.selectedRestaurantCategoryId;
-            restaurantCategories = state.restaurantCategories;
-          }
-          return FloatingActionButton(
-            onPressed: () => _addCategory(
-                context, restaurantCategoryId, restaurantCategories),
-            child: const Icon(Icons.add),
-          );
-        },
+    );
+  }
+}
+
+// ── Пустое состояние ──────────────────────────────────────────────────────────
+class _EmptyMenuState extends StatelessWidget {
+  final VoidCallback onAddCategory;
+
+  const _EmptyMenuState({required this.onAddCategory});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.07),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.menu_book_rounded,
+                size: 44,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Меню пока пусто',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMain,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Создайте первую категорию,\nчтобы начать добавлять блюда',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSub,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: onAddCategory,
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(
+                  'Создать категорию',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

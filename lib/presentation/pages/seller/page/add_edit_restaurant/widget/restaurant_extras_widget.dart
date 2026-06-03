@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:restauran/theme/app_colors.dart';
 import '../../../../../../data/models/restaurant_extra.dart';
 
 class RestaurantExtrasWidget extends StatelessWidget {
@@ -21,83 +22,125 @@ class RestaurantExtrasWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: CircularProgressIndicator(color: AppColors.accent),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (isLoading)
-          const Center(child: CircularProgressIndicator())
-        else
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: extras.length,
-            itemBuilder: (context, index) {
-              final extra = extras[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(
-                    extra.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: GestureDetector(
-                    onTap: () {
-                      if (extra.description != null &&
-                          extra.description!.isNotEmpty) {
-                        _showFullDescription(
-                          context,
-                          extra.name,
-                          extra.description!,
-                        );
-                      }
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${extra.price.toStringAsFixed(0)} Тг'),
-                        if (extra.description != null &&
-                            extra.description!.isNotEmpty)
-                          Text(
-                            extra.description!.replaceAll('\n', ' ').trim(),
-                            maxLines: 1, // ← строго одна строка
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                      ],
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _showEditExtraDialog(context, extra),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _showDeleteConfirmation(
-                          context,
-                          extra.id!,
-                          extra.name,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () => _showAddExtraDialog(context),
-          icon: const Icon(Icons.add),
-          label: const Text('Добавить дополнительную опцию'),
-        ),
+        for (final extra in extras) _buildExtraRow(context, extra),
+        const SizedBox(height: 4),
+        _buildAddButton(context),
       ],
     );
   }
+
+  Widget _buildAddButton(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: () => _showAddExtraDialog(context),
+      icon: const Icon(Icons.add, size: 18),
+      label: const Text('Добавить опцию'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.divider),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        minimumSize: const Size(double.infinity, 0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExtraRow(BuildContext context, RestaurantExtra extra) {
+    final hasDescription =
+        extra.description != null && extra.description!.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  extra.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textMain,
+                  ),
+                ),
+                if (hasDescription) ...[
+                  const SizedBox(height: 2),
+                  GestureDetector(
+                    onTap: () => _showFullDescription(
+                        context, extra.name, extra.description!),
+                    child: Text(
+                      extra.description!.replaceAll('\n', ' ').trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSub,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            '${extra.price.toStringAsFixed(0)} Тг',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMain,
+            ),
+          ),
+          PopupMenuButton<String>(
+            padding: EdgeInsets.zero,
+            icon:
+                const Icon(Icons.more_vert, color: AppColors.textSub, size: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Редактировать'),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child:
+                    Text('Удалить', style: TextStyle(color: AppColors.danger)),
+              ),
+            ],
+            onSelected: (value) {
+              if (value == 'edit') {
+                _showEditExtraDialog(context, extra);
+              } else if (value == 'delete') {
+                _showDeleteConfirmation(context, extra.id!, extra.name);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== ДИАЛОГИ ====================
 
   void _showFullDescription(
     BuildContext context,
@@ -108,11 +151,14 @@ class RestaurantExtrasWidget extends StatelessWidget {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (_) => SafeArea(
         child: Container(
-          width: double.infinity, // ← ширина экрана
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 30),
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,6 +168,7 @@ class RestaurantExtrasWidget extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
+                    color: AppColors.textMain,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -130,6 +177,7 @@ class RestaurantExtrasWidget extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     height: 1.5,
+                    color: AppColors.textSub,
                   ),
                 ),
               ],
@@ -145,82 +193,91 @@ class RestaurantExtrasWidget extends StatelessWidget {
     final priceController = TextEditingController();
     final descriptionController = TextEditingController();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Добавить дополнительную опцию'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Добавить опцию',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMain)),
+            const SizedBox(height: 16),
+            _DialogTextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Название *',
-                  hintText: 'Например: Живая музыка',
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
+                label: 'Название *',
+                hint: 'Например: Живая музыка'),
+            const SizedBox(height: 12),
+            _DialogTextField(
                 controller: priceController,
-                decoration: const InputDecoration(
-                  labelText: 'Цена (Тг) *',
-                  hintText: '5000',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
+                label: 'Цена *',
+                suffix: 'Тг',
+                hint: '5000',
+                keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            _DialogTextField(
                 controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Описание (необязательно)',
-                  hintText: 'Дополнительная информация',
+                label: 'Описание (необязательно)',
+                maxLines: 3),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Отмена',
+                      style: TextStyle(color: AppColors.textSub)),
                 ),
-                maxLines: 3,
               ),
-            ],
-          ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    final priceText = priceController.text.trim();
+                    final description = descriptionController.text.trim();
+                    if (name.isEmpty || priceText.isEmpty) {
+                      _snack(context, 'Заполните обязательные поля');
+                      return;
+                    }
+                    final price = double.tryParse(priceText);
+                    if (price == null || price <= 0) {
+                      _snack(context, 'Введите корректную цену');
+                      return;
+                    }
+                    onAddExtra(
+                        name, price, description.isEmpty ? null : description);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Добавить'),
+                ),
+              ),
+            ]),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final priceText = priceController.text.trim();
-              final description = descriptionController.text.trim();
-
-              if (name.isEmpty || priceText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Заполните обязательные поля'),
-                  ),
-                );
-                return;
-              }
-
-              final price = double.tryParse(priceText);
-              if (price == null || price <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Введите корректную цену'),
-                  ),
-                );
-                return;
-              }
-
-              onAddExtra(
-                name,
-                price,
-                description.isEmpty ? null : description,
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('Добавить'),
-          ),
-        ],
       ),
     );
   }
@@ -232,101 +289,211 @@ class RestaurantExtrasWidget extends StatelessWidget {
     final descriptionController =
         TextEditingController(text: extra.description ?? '');
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Редактировать опцию'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Название *'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Редактировать опцию',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMain)),
+            const SizedBox(height: 16),
+            _DialogTextField(controller: nameController, label: 'Название *'),
+            const SizedBox(height: 12),
+            _DialogTextField(
                 controller: priceController,
-                decoration: const InputDecoration(labelText: 'Цена (Тг) *'),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
+                label: 'Цена *',
+                suffix: 'Тг',
+                keyboardType: TextInputType.number),
+            const SizedBox(height: 12),
+            _DialogTextField(
                 controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Описание (необязательно)',
+                label: 'Описание (необязательно)',
+                maxLines: 3),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Отмена',
+                      style: TextStyle(color: AppColors.textSub)),
                 ),
-                maxLines: 3,
               ),
-            ],
-          ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    final priceText = priceController.text.trim();
+                    final description = descriptionController.text.trim();
+                    if (name.isEmpty || priceText.isEmpty) {
+                      _snack(context, 'Заполните обязательные поля');
+                      return;
+                    }
+                    final price = double.tryParse(priceText);
+                    if (price == null || price <= 0) {
+                      _snack(context, 'Введите корректную цену');
+                      return;
+                    }
+                    onUpdateExtra(
+                      extra.id!,
+                      name,
+                      price,
+                      description.isEmpty ? null : description,
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Сохранить'),
+                ),
+              ),
+            ]),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final priceText = priceController.text.trim();
-              final description = descriptionController.text.trim();
-
-              if (name.isEmpty || priceText.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Заполните обязательные поля'),
-                  ),
-                );
-                return;
-              }
-
-              final price = double.tryParse(priceText);
-              if (price == null || price <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Введите корректную цену'),
-                  ),
-                );
-                return;
-              }
-
-              onUpdateExtra(
-                extra.id!,
-                name,
-                price,
-                description.isEmpty ? null : description,
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
       ),
     );
   }
 
   void _showDeleteConfirmation(
       BuildContext context, String extraId, String extraName) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить опцию?'),
-        content: Text('Вы уверены, что хотите удалить "$extraName"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onRemoveExtra(extraId);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Удалить'),
-          ),
-        ],
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: AppColors.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Удалить опцию?',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMain)),
+            const SizedBox(height: 10),
+            Text('Вы уверены, что хотите удалить «$extraName»?',
+                style: const TextStyle(fontSize: 14, color: AppColors.textSub)),
+            const SizedBox(height: 24),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Отмена',
+                      style: TextStyle(color: AppColors.textSub)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: () {
+                    onRemoveExtra(extraId);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: const Text('Удалить'),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _snack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ====================
+
+class _DialogTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? suffix;
+  final int maxLines;
+  final String? hint;
+  final TextInputType? keyboardType;
+
+  const _DialogTextField({
+    required this.controller,
+    required this.label,
+    this.suffix,
+    this.hint,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      cursorColor: AppColors.accent,
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+        hintText: hint,
+        labelStyle: const TextStyle(color: AppColors.textSub),
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+        ),
       ),
     );
   }

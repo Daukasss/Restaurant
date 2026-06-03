@@ -16,15 +16,11 @@ import 'booking_managment_bloc_state.dart';
 class BookingBloc extends Bloc<BookingEvent, BookingState> {
   final _restaurantService = getIt<AbstractRestaurantService>();
   final _bookingService = getIt<AbstractBookingService>();
-  final _menuService = getIt<AbstractMenuService>();
   final _cacheService = BookingCacheService();
   final _connectivityService = ConnectivityService();
 
   StreamSubscription<bool>? _connectivitySub;
   String? _currentRestaurantId;
-
-  /// Кэш названий категорий в памяти — категорий мало, запрашиваем один раз
-  final _categoryCache = <String, String>{};
 
   BookingBloc() : super(BookingInitial()) {
     on<LoadBookings>(_onLoadBookings);
@@ -42,6 +38,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   // ────────────────────────────────────────────────
   //              Загрузка бронирований
   // ────────────────────────────────────────────────
+
   Future<void> _onLoadBookings(
     LoadBookings event,
     Emitter<BookingState> emit,
@@ -64,23 +61,33 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     Emitter<BookingState> emit,
   ) async {
     try {
-      final restaurantData =
-          await _restaurantService.getRestaurantData(restaurantId);
+      // ✅ Запрашиваем данные ресторана и бронирования параллельно
+      final results = await Future.wait([
+        _restaurantService.getRestaurantData(restaurantId),
+        _bookingService.getBookings(restaurantId),
+      ]);
+
+      final restaurantData = results[0] as Map<String, dynamic>;
+      var bookings = results[1] as List<Map<String, dynamic>>;
 
       final pricePerGuest = restaurantData['pricePerGuest'] as double?;
       final sumPeople = restaurantData['sumPeople'] as int?;
 
-      await _cacheService.saveRestaurantMeta(
-        restaurantId,
-        pricePerGuest: pricePerGuest,
-        sumPeople: sumPeople,
-      );
+      // Сохраняем мета и время кэша параллельно
+      await Future.wait([
+        _cacheService.saveRestaurantMeta(
+          restaurantId,
+          pricePerGuest: pricePerGuest,
+          sumPeople: sumPeople,
+        ),
+      ]);
 
-      var bookings = await _bookingService.getBookings(restaurantId);
       bookings = _updateBookingStatusesByTime(bookings);
       bookings.sort(_compareBookingsByDateAndTime);
-      // ✅ Обогащение теперь параллельное
-      bookings = await _enrichBookings(bookings);
+
+      // ✅ Обогащение (категория / extras / меню) убрано отсюда.
+      // Оно происходит лениво — в BookingDetailPage при открытии детали.
+      // Благодаря этому список отображается сразу после получения bookings.
 
       await _cacheService.saveBookings(restaurantId, bookings);
       await _cacheService.saveLastUpdated(restaurantId);
@@ -95,7 +102,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         cacheTime: DateTime.now(),
       ));
     } catch (error, stack) {
-      debugPrint('Ошибка загрузки из сети: $error\n$stack');
+      debugPrint('[BookingBloc] Ошибка загрузки из сети: $error\n$stack');
       final hasCached = await _cacheService.hasCache(restaurantId);
       if (hasCached) {
         await _loadFromCache(restaurantId, emit);
@@ -115,9 +122,16 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       return;
     }
 
-    final cached = await _cacheService.loadBookings(restaurantId);
-    final cacheTime = await _cacheService.lastUpdated(restaurantId);
-    final meta = await _cacheService.loadRestaurantMeta(restaurantId);
+    // ✅ Загружаем все данные из кэша параллельно
+    final cacheResults = await Future.wait([
+      _cacheService.loadBookings(restaurantId),
+      _cacheService.lastUpdated(restaurantId),
+      _cacheService.loadRestaurantMeta(restaurantId),
+    ]);
+
+    final cached = cacheResults[0] as List<Map<String, dynamic>>;
+    final cacheTime = cacheResults[1] as DateTime?;
+    final meta = cacheResults[2] as dynamic;
 
     var bookings = _updateBookingStatusesByTime(cached);
     bookings.sort(_compareBookingsByDateAndTime);
@@ -134,101 +148,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       isOffline: true,
       cacheTime: cacheTime,
     ));
-  }
-
-  // ── Обогащение данных (параллельное) ─────────────────────────────────
-
-  Future<List<Map<String, dynamic>>> _enrichBookings(
-    List<Map<String, dynamic>> bookings,
-  ) async {
-    // ✅ Все бронирования обогащаем параллельно через Future.wait
-    return Future.wait(bookings.map(_enrichSingleBooking));
-  }
-
-  Future<Map<String, dynamic>> _enrichSingleBooking(
-    Map<String, dynamic> booking,
-  ) async {
-    final map = Map<String, dynamic>.from(booking);
-
-    final categoryId = map['restaurant_category_id']?.toString();
-    final extrasIds =
-        map['selected_extras'] is List ? map['selected_extras'] as List : [];
-    final hasMenu = map['menu_selections'] != null;
-
-    // ✅ Три запроса внутри одного бронирования — тоже параллельно
-    final results = await Future.wait([
-      _fetchCategoryName(categoryId),
-      _fetchExtrasNames(extrasIds),
-      hasMenu ? _fetchMenuItems(map) : Future.value(<Map<String, String>>[]),
-    ]);
-
-    map['_category_name'] = results[0] as String;
-    map['_extras_names'] = results[1] as List<String>;
-    map['_menu_items'] = results[2] as List<Map<String, String>>;
-
-    return map;
-  }
-
-  // ── Получение названия категории (с кэшем в памяти) ──────────────────
-
-  Future<String> _fetchCategoryName(String? categoryId) async {
-    if (categoryId == null || categoryId.isEmpty) return '';
-
-    // ✅ Если уже запрашивали — берём из кэша, без сетевого вызова
-    if (_categoryCache.containsKey(categoryId)) {
-      return _categoryCache[categoryId]!;
-    }
-
-    try {
-      final category =
-          await _restaurantService.getRestaurantCategoryById(categoryId);
-      final name = category?.name ?? '';
-      _categoryCache[categoryId] = name;
-      return name;
-    } catch (_) {
-      _categoryCache[categoryId] = '';
-      return '';
-    }
-  }
-
-  // ── Получение названий доп. опций (параллельно) ───────────────────────
-
-  Future<List<String>> _fetchExtrasNames(List<dynamic> ids) async {
-    if (ids.isEmpty) return [];
-
-    // ✅ Все документы запрашиваем одновременно
-    final docs = await Future.wait(
-      ids.map(
-        (id) => FirebaseFirestore.instance
-            .collection('restaurant_extras')
-            .doc(id.toString())
-            .get(),
-      ),
-    );
-
-    return docs
-        .where((d) => d.exists)
-        .map((d) => d.data()?['name']?.toString() ?? '')
-        .where((name) => name.isNotEmpty)
-        .toList();
-  }
-
-  // ── Получение выбранных блюд ──────────────────────────────────────────
-
-  Future<List<Map<String, String>>> _fetchMenuItems(
-    Map<String, dynamic> map,
-  ) async {
-    try {
-      final items = await _menuService.fetchMenuSelections(map);
-      return items
-          .map((i) => {
-                'category': (i['category'] ?? '—').toString(),
-                'item': (i['item'] ?? '—').toString(),
-              })
-          .toList();
-    } catch (_) {
-      return [];
-    }
   }
 
   // ── Обновление статуса ────────────────────────────────────────────────
@@ -257,7 +176,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           await _bookingService.getRestaurantIdFromBooking(event.bookingId);
       add(LoadBookings(restaurantId.toString()));
     } catch (error, stack) {
-      debugPrint('Ошибка обновления статуса: $error\n$stack');
+      debugPrint('[BookingBloc] Ошибка обновления статуса: $error\n$stack');
       emit(const BookingError('Не удалось обновить статус брони'));
     }
   }
@@ -292,7 +211,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     ));
   }
 
-  // ── Реакция на сеть ───────────────────────────────────────────────────
+  // ── Реакция на изменение сети ─────────────────────────────────────────
 
   Future<void> _onConnectivityChanged(
       ConnectivityChanged event, Emitter<BookingState> emit) async {
@@ -301,7 +220,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       debugPrint('[BookingBloc] ONLINE → обновляем из сети');
       await _loadFromNetwork(_currentRestaurantId!, emit);
     } else {
-      debugPrint('[BookingBloc] OFFLINE → кэш');
+      debugPrint('[BookingBloc] OFFLINE → переключаемся на кэш');
       if (state is BookingLoaded) {
         emit((state as BookingLoaded).copyWith(isOffline: true));
       } else {
@@ -341,11 +260,11 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     final now = DateTime.now();
     final dA = _parseBookingDateTime(a);
     final dB = _parseBookingDateTime(b);
-    final aF = dA.isAfter(now);
-    final bF = dB.isAfter(now);
-    if (aF && bF) return dA.compareTo(dB);
-    if (!aF && !bF) return dB.compareTo(dA);
-    return aF ? -1 : 1;
+    final aFuture = dA.isAfter(now);
+    final bFuture = dB.isAfter(now);
+    if (aFuture && bFuture) return dA.compareTo(dB);
+    if (!aFuture && !bFuture) return dB.compareTo(dA);
+    return aFuture ? -1 : 1;
   }
 
   DateTime _parseBookingDateTime(Map<String, dynamic> booking) {
@@ -362,8 +281,13 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         return DateTime(2100);
       }
       final parts = (booking['start_time'] as String? ?? '00:00').split(':');
-      return DateTime(date.year, date.month, date.day,
-          int.tryParse(parts[0]) ?? 0, int.tryParse(parts[1]) ?? 0);
+      return DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.tryParse(parts[0]) ?? 0,
+        int.tryParse(parts[1]) ?? 0,
+      );
     } catch (_) {
       return DateTime(2100);
     }

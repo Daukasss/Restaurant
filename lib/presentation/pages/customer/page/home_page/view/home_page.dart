@@ -154,7 +154,7 @@ class _HomeViewState extends State<HomeView> {
                                   },
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              // const SizedBox(width: 12),
                               // IconButton.filledTonal(
                               //   icon: const Icon(Icons.filter_list_rounded),
                               //   tooltip: 'Фильтры',
@@ -262,7 +262,8 @@ class _HomeViewState extends State<HomeView> {
                   if (state.isLoading)
                     const SliverFillRemaining(
                       hasScrollBody: false,
-                      child: Center(child: CircularProgressIndicator()),
+                      child:
+                          Center(child: CircularProgressIndicator.adaptive()),
                     )
                   else if (state.filteredRestaurants.isEmpty)
                     SliverFillRemaining(

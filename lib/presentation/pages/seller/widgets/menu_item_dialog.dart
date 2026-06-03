@@ -450,9 +450,9 @@ class _MenuItemBottomSheetState extends State<MenuItemBottomSheet>
             ? const SizedBox(
                 width: 22,
                 height: 22,
-                child: CircularProgressIndicator(
+                child: CircularProgressIndicator.adaptive(
                   strokeWidth: 2.5,
-                  color: Colors.white,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(

@@ -26,8 +26,15 @@ class BookingManagementPage extends StatelessWidget {
     return BlocProvider(
       create: (context) => BookingBloc()..add(LoadBookings(restaurantId)),
       child: Scaffold(
+        backgroundColor: const Color(0xFFF7F9FC),
         appBar: AppBar(
-          title: Text('Бронирования - $restaurantName'),
+          backgroundColor: const Color(0xFFF7F9FC),
+          surfaceTintColor: Colors.transparent,
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          // title: Text('Бронирования - $restaurantName'),
         ),
         body: BlocConsumer<BookingBloc, BookingState>(
           listener: (context, state) {
@@ -67,7 +74,7 @@ class BookingManagementPage extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is BookingLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator.adaptive());
             }
 
             if (state is BookingOfflineEmpty) {
@@ -82,7 +89,7 @@ class BookingManagementPage extends StatelessWidget {
               return Center(child: Text(state.message));
             }
 
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator.adaptive());
           },
         ),
       ),
@@ -101,7 +108,6 @@ class BookingManagementPage extends StatelessWidget {
         _buildStatusFilter(context, state),
         _buildDateFilter(context, state),
         const SizedBox(height: 4),
-        // ✅ Expanded — прямой child Column
         Expanded(
           child: state.filteredBookings.isEmpty
               ? _buildEmptyBookingsMessage()
@@ -146,11 +152,10 @@ class BookingManagementPage extends StatelessWidget {
     );
   }
 
-  /// Состояние: нет сети + нет кэша
   Widget _buildOfflineEmptyState(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -183,7 +188,7 @@ class BookingManagementPage extends StatelessWidget {
 
   Widget _buildStatusFilter(BuildContext context, BookingLoaded state) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -228,7 +233,7 @@ class BookingManagementPage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: selectedDate != null
                       ? Theme.of(context).primaryColor.withOpacity(0.1)
-                      : Colors.grey[100],
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: selectedDate != null
@@ -306,16 +311,26 @@ class BookingManagementPage extends StatelessWidget {
     final isActive = filter == activeFilter;
 
     return FilterChip(
-      label: Text(label),
+      label: Text(label,
+          style: TextStyle(
+            color: isActive
+                ? Colors.white
+                : Theme.of(context).textTheme.labelMedium?.color,
+          )),
       selected: isActive,
       onSelected: (selected) {
         if (selected) {
           context.read<BookingBloc>().add(FilterBookings(filter));
         }
       },
-      backgroundColor: Colors.grey[200],
-      selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-      checkmarkColor: Theme.of(context).primaryColor,
+      side: BorderSide(
+        color: isActive
+            ? Theme.of(context).primaryColor.withOpacity(0.5)
+            : Colors.grey[300]!,
+      ),
+      backgroundColor: Colors.white,
+      selectedColor: Theme.of(context).primaryColor,
+      checkmarkColor: Colors.white,
     );
   }
 

@@ -17,16 +17,37 @@ class MenuLoaded extends MenuState {
   final List<MenuCategory> categories;
   final List<Map<String, dynamic>> restaurantCategories;
   final String? selectedRestaurantCategoryId;
+  final bool isCategoryLoading;
 
   const MenuLoaded(
     this.categories, {
     this.restaurantCategories = const [],
     this.selectedRestaurantCategoryId,
+    this.isCategoryLoading = false,
   });
 
+  MenuLoaded copyWith({
+    List<MenuCategory>? categories,
+    List<Map<String, dynamic>>? restaurantCategories,
+    String? selectedRestaurantCategoryId,
+    bool? isCategoryLoading,
+  }) {
+    return MenuLoaded(
+      categories ?? this.categories,
+      restaurantCategories: restaurantCategories ?? this.restaurantCategories,
+      selectedRestaurantCategoryId:
+          selectedRestaurantCategoryId ?? this.selectedRestaurantCategoryId,
+      isCategoryLoading: isCategoryLoading ?? this.isCategoryLoading,
+    );
+  }
+
   @override
-  List<Object?> get props =>
-      [categories, restaurantCategories, selectedRestaurantCategoryId];
+  List<Object?> get props => [
+        categories,
+        restaurantCategories,
+        selectedRestaurantCategoryId,
+        isCategoryLoading,
+      ];
 }
 
 class RestaurantCategoriesLoaded extends MenuState {
