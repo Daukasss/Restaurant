@@ -10,6 +10,7 @@ import '../../customer/page/home_page/view/home_page.dart';
 import '../../seller/page/seller_dashboard/view/seller_dashboard_page.dart';
 import '../pages/login_page/cubit/login_cubit.dart';
 import '../pages/login_page/cubit/login_state.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
 
 class VerificationPage extends StatelessWidget {
   final String phone;
