@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
-
 import 'package:restauran/presentation/widgets/result_diolog.dart';
-import 'package:restauran/theme/offline_banner.dart';
-
 import '../bloc/booking_managment_bloc_bloc.dart';
 import '../bloc/booking_managment_bloc_event.dart';
 import '../bloc/booking_managment_bloc_state.dart';
@@ -99,19 +95,13 @@ class BookingManagementPage extends StatelessWidget {
   Widget _buildLoadedBody(BuildContext context, BookingLoaded state) {
     return Column(
       children: [
-        OfflineBanner(
-          isOffline: state.isOffline,
-          lastUpdatedText: state.cacheTime != null
-              ? _formatCacheTime(state.cacheTime!)
-              : null,
-        ),
         _buildStatusFilter(context, state),
         _buildDateFilter(context, state),
         const SizedBox(height: 4),
         Expanded(
           child: state.filteredBookings.isEmpty
               ? _buildEmptyBookingsMessage()
-              : RefreshIndicator(
+              : RefreshIndicator.adaptive(
                   onRefresh: () async {
                     context.read<BookingBloc>().add(LoadBookings(restaurantId));
                   },
@@ -295,11 +285,6 @@ class BookingManagementPage extends StatelessWidget {
     return '${date.day.toString().padLeft(2, '0')}.'
         '${date.month.toString().padLeft(2, '0')}.'
         '${date.year}';
-  }
-
-  String _formatCacheTime(DateTime dt) {
-    final fmt = DateFormat('dd.MM HH:mm', 'ru');
-    return fmt.format(dt);
   }
 
   Widget _filterChip(

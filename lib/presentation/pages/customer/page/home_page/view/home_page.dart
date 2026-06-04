@@ -93,7 +93,7 @@ class _HomeViewState extends State<HomeView> {
             }
           },
           builder: (context, state) {
-            return RefreshIndicator(
+            return RefreshIndicator.adaptive(
               onRefresh: () async {
                 context.read<HomeBloc>().add(LoadRestaurants());
               },

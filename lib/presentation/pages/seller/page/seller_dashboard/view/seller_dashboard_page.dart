@@ -4,25 +4,16 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:restauran/data/services/abstract/abstract_booking_service.dart';
-import 'package:restauran/data/services/abstract/abstract_category_closure_service.dart';
-import 'package:restauran/data/services/abstract/abstract_menu_service.dart';
-import 'package:restauran/data/services/abstract/abstract_restaurant_service.dart';
 import 'package:restauran/data/services/connectivity_service.dart';
-import 'package:restauran/data/services/service_locator.dart';
-import 'package:restauran/presentation/pages/customer/page/booking_page/bloc/booking_bloc.dart';
-import 'package:restauran/presentation/pages/customer/page/booking_page/view/booking_page.dart';
 import 'package:restauran/presentation/pages/seller/page/add_edit_restaurant/view/add_restaurant_page.dart';
-import 'package:restauran/presentation/pages/seller/page/booking_managment_page/view/booking_management_page.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
 import 'package:restauran/theme/app_colors.dart';
-// import 'package:restauran/theme/offline_banner.dart';
 import '../../../../customer/page/profile_page/view/profile_page.dart';
-import '../../menu_management/view/menu_management_page.dart';
 import '../bloc/seller_bloc.dart';
 import '../bloc/seller_event.dart';
 import '../bloc/seller_state.dart';
 import '../widgets/restaurant_card.dart';
+import 'seller_restaurant_page.dart';
 
 class SellerDashboardPage extends StatefulWidget {
   const SellerDashboardPage({super.key});
@@ -36,6 +27,7 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
   final ConnectivityService _connectivityService = ConnectivityService();
 
   bool _isOnline = true;
+  int _selectedTab = 0; // 0 = Рестораны, 1 = Профиль
   StreamSubscription<bool>? _connectivitySub;
 
   @override
@@ -50,55 +42,9 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
 
     _connectivitySub =
         _connectivityService.onConnectivityChanged.listen((online) {
-      if (mounted) {
-        setState(() => _isOnline = online);
-        if (!online) {
-          // _showOfflineSnackBar();
-        } else {
-          // _showOnlineSnackBar();
-        }
-      }
+      if (mounted) setState(() => _isOnline = online);
     });
   }
-
-  // void _showOfflineSnackBar() {
-  //   ScaffoldMessenger.of(context).clearSnackBars();
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: const Row(
-  //         children: [
-  //           Icon(Icons.wifi_off, color: Colors.white),
-  //           SizedBox(width: 10),
-  //           Expanded(
-  //             child: Text(
-  //                 'Нет подключения к интернету. Доступны только «Брони» (из кэша).'),
-  //           ),
-  //         ],
-  //       ),
-  //       backgroundColor: Colors.orange[800],
-  //       duration: const Duration(seconds: 5),
-  //       behavior: SnackBarBehavior.floating,
-  //     ),
-  //   );
-  // }
-
-  // void _showOnlineSnackBar() {
-  //   ScaffoldMessenger.of(context).clearSnackBars();
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(
-  //       content: Row(
-  //         children: [
-  //           Icon(Icons.wifi, color: Colors.white),
-  //           SizedBox(width: 10),
-  //           Text('Подключение восстановлено'),
-  //         ],
-  //       ),
-  //       backgroundColor: Colors.green,
-  //       duration: Duration(seconds: 2),
-  //       behavior: SnackBarBehavior.floating,
-  //     ),
-  //   );
-  // }
 
   @override
   void dispose() {
@@ -143,181 +89,176 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
           }
         },
         child: Scaffold(
-          appBar: AppBar(
-            title: const Text(
-              'Мои рестораны',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700, color: AppColors.textMain),
-            ),
-            centerTitle: false,
-            backgroundColor: AppColors.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 4),
-                child: Icon(
-                  _isOnline ? Icons.wifi : Icons.wifi_off,
-                  color: _isOnline ? Colors.green[400] : Colors.orange[400],
-                  size: 20,
-                ),
+          backgroundColor: AppColors.surface,
+          body: IndexedStack(
+            index: _selectedTab,
+            children: [
+              // ── Вкладка 0: список ресторанов ────────────────────────────
+              _RestaurantsTab(
+                userId: userId,
+                isOnline: _isOnline,
               ),
-              IconButton(
-                icon:
-                    const Icon(Icons.person_outline, color: AppColors.textMain),
-                onPressed: _isOnline
-                    ? () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const ProfilePage()),
-                        )
-                    : () => _showOfflineFeatureToast(context, 'Профиль'),
-              ),
+              // ── Вкладка 1: профиль ───────────────────────────────────────
+              const ProfilePage(),
             ],
           ),
-          backgroundColor: AppColors.surface,
-          body: Column(
-            children: [
-              // OfflineBanner(isOffline: !_isOnline),
-              Expanded(
-                child: BlocBuilder<SellerBloc, SellerState>(
-                  builder: (context, state) {
-                    if (state is SellerLoading) {
-                      return const Center(
-                          child: CircularProgressIndicator.adaptive());
-                    } else if (state is SellerLoaded) {
-                      return RefreshIndicator(
-                        onRefresh: _isOnline
-                            ? () async => context
-                                .read<SellerBloc>()
-                                .add(LoadRestaurants(userId))
-                            : () async {},
-                        child: state.restaurants.isEmpty
-                            ? _EmptyRestaurantsState(
-                                isOnline: _isOnline,
-                                onAdd: () => _navigateToAddRestaurant(context),
-                              )
-                            : ListView.builder(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                                itemCount: state.restaurants.length + 1,
-                                itemBuilder: (context, index) {
-                                  // ── Первый элемент — кнопка добавления ──
-                                  if (index == 0) {
-                                    return _AddRestaurantBanner(
-                                      isOnline: _isOnline,
-                                      onTap: _isOnline
-                                          ? () =>
-                                              _navigateToAddRestaurant(context)
-                                          : () => _showOfflineFeatureToast(
-                                              context, 'Добавление ресторана'),
-                                    );
-                                  }
-
-                                  final restaurant =
-                                      state.restaurants[index - 1];
-                                  return RestaurantCard(
-                                    restaurant: restaurant,
-                                    isOffline: !_isOnline,
-                                    onEdit: _isOnline
-                                        ? () => _navigateToEditRestaurant(
-                                            context, restaurant)
-                                        : () => _showOfflineFeatureToast(
-                                            context, 'Редактирование'),
-                                    onDelete: _isOnline
-                                        ? () => _showDeleteConfirmation(
-                                            context, restaurant['id'], userId)
-                                        : () => _showOfflineFeatureToast(
-                                            context, 'Удаление'),
-                                    onMenuManagement: _isOnline
-                                        ? () => _navigateToMenuManagement(
-                                              context,
-                                              restaurant['id'],
-                                              restaurant['name'],
-                                            )
-                                        : () => _showOfflineFeatureToast(
-                                            context, 'Управление меню'),
-                                    onBookingManagement: () =>
-                                        _navigateToBookingManagement(
-                                            context,
-                                            restaurant['id'],
-                                            restaurant['name']),
-                                    onManualBooking: _isOnline
-                                        ? () => Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => BlocProvider(
-                                                  create: (context) =>
-                                                      BookingBloc(
-                                                    bookingService: getIt<
-                                                        AbstractBookingService>(),
-                                                    restaurantService: getIt<
-                                                        AbstractRestaurantService>(),
-                                                    menuService: getIt<
-                                                        AbstractMenuService>(),
-                                                    closureService: getIt<
-                                                        AbstractCategoryClosureService>(),
-                                                  ),
-                                                  child: BookingPage(
-                                                    restaurantId:
-                                                        restaurant['id'],
-                                                    restaurantName:
-                                                        restaurant['name'],
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                        : () => _showOfflineFeatureToast(
-                                            context, 'Ручная бронь'),
-                                  );
-                                },
-                              ),
-                      );
-                    } else if (state is SellerError) {
-                      return Center(
-                        child: Text(state.message,
-                            style: const TextStyle(color: AppColors.textSub)),
-                      );
-                    }
-
-                    return const Center(
-                        child: CircularProgressIndicator.adaptive());
-                  },
-                ),
-              ),
-            ],
+          bottomNavigationBar: _DashboardBottomNav(
+            currentIndex: _selectedTab,
+            isOnline: _isOnline,
+            onTap: (i) {
+              if (i == 1 && !_isOnline) {
+                _showOfflineToast('Профиль');
+                return;
+              }
+              setState(() => _selectedTab = i);
+            },
           ),
         ),
       ),
     );
   }
 
-  void _showOfflineFeatureToast(BuildContext context, String feature) {
+  void _showOfflineToast(String feature) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text('$feature недоступно без интернета',
-                  style: const TextStyle(fontSize: 13)),
-            ),
-          ],
-        ),
+        content: Row(children: [
+          const Icon(Icons.wifi_off, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('$feature недоступно без интернета',
+                style: const TextStyle(fontSize: 13)),
+          ),
+        ]),
         backgroundColor: Colors.grey[700],
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
+}
 
-  Future<void> _navigateToAddRestaurant(BuildContext context) async {
+// ── Вкладка «Рестораны» ───────────────────────────────────────────────────
+class _RestaurantsTab extends StatelessWidget {
+  final String userId;
+  final bool isOnline;
+
+  const _RestaurantsTab({required this.userId, required this.isOnline});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        title: const Text(
+          'Мои рестораны',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textMain,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: isOnline
+                  ? const Icon(Icons.wifi_rounded,
+                      key: ValueKey('on'), color: Colors.green, size: 20)
+                  : Icon(Icons.wifi_off_rounded,
+                      key: const ValueKey('off'),
+                      color: Colors.orange[400],
+                      size: 20),
+            ),
+          ),
+          Padding(
+              padding: const EdgeInsets.only(right: 14),
+              child: IconButton(
+                  onPressed:
+                      isOnline ? () => _navigateToAdd(context, userId) : null,
+                  icon: Icon(Icons.add_rounded))),
+        ],
+      ),
+      body: BlocBuilder<SellerBloc, SellerState>(
+        builder: (context, state) {
+          if (state is SellerLoading) {
+            return const Center(child: CircularProgressIndicator.adaptive());
+          }
+          if (state is SellerLoaded) {
+            return RefreshIndicator.adaptive(
+              onRefresh: isOnline
+                  ? () async =>
+                      context.read<SellerBloc>().add(LoadRestaurants(userId))
+                  : () async {},
+              child: state.restaurants.isEmpty
+                  ? _EmptyRestaurantsState(
+                      isOnline: isOnline,
+                      onAdd: () => _navigateToAdd(context, userId),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      itemCount: state.restaurants.length,
+                      itemBuilder: (context, index) {
+                        final restaurant = state.restaurants[index];
+                        return RestaurantCard(
+                          restaurant: restaurant,
+                          isOffline: !isOnline,
+                          onEdit: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddRestaurantPage(
+                                restaurantId: restaurant['id'],
+                                restaurantName: restaurant['name']!,
+                                restaurant: restaurant,
+                              ),
+                            ),
+                          ).then((result) {
+                            if (result == true && context.mounted) {
+                              context
+                                  .read<SellerBloc>()
+                                  .add(LoadRestaurants(userId));
+                            }
+                          }),
+                          // Тап по карточке → страница ресторана
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SellerRestaurantPage(
+                                restaurant: restaurant,
+                              ),
+                            ),
+                          ),
+                          onDelete: () => _showDeleteConfirmation(
+                              context, restaurant['id'], userId),
+                        );
+                      },
+                    ),
+            );
+          }
+          if (state is SellerError) {
+            return Center(
+              child: Text(state.message,
+                  style: const TextStyle(color: AppColors.textSub)),
+            );
+          }
+          return const Center(child: CircularProgressIndicator.adaptive());
+        },
+      ),
+    );
+  }
+
+  Future<void> _navigateToAdd(BuildContext context, String userId) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AddRestaurantPage(
+        builder: (_) => const AddRestaurantPage(
           restaurantId: '',
           restaurantName: '',
         ),
@@ -328,150 +269,147 @@ class _SellerDashboardPageState extends State<SellerDashboardPage> {
     }
   }
 
-  Future<void> _navigateToEditRestaurant(
-      BuildContext context, Map<String, dynamic> restaurant) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddRestaurantPage(
-          restaurant: restaurant,
-          restaurantId: restaurant['id'],
-          restaurantName: restaurant['name'],
-        ),
-      ),
-    );
-    if (result == true && context.mounted) {
-      context.read<SellerBloc>().add(const RestaurantUpdated());
-    }
-  }
-
-  Future<void> _navigateToBookingManagement(
-      BuildContext context, String restaurantId, String restaurantName) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => BookingManagementPage(
-          restaurantId: restaurantId,
-          restaurantName: restaurantName,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _navigateToMenuManagement(
-      BuildContext context, String restaurantId, String restaurantName) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MenuManagementPage(
-          restaurantId: restaurantId,
-          restaurantName: restaurantName,
-        ),
-      ),
-    );
-  }
-
   Future<void> _showDeleteConfirmation(
       BuildContext context, String restaurantId, String userId) async {
-    final sellerContext = context;
+    final sellerCtx = context;
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Удалить ресторан',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          content: const Text(
-              'Вы уверены, что хотите удалить этот ресторан? Это действие нельзя отменить.'),
-          actions: [
-            TextButton(
-              child: Text('Назад', style: TextStyle(color: Colors.grey[600])),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: const Text('Удалить',
-                  style: TextStyle(
-                      color: AppColors.danger, fontWeight: FontWeight.w600)),
-              onPressed: () {
-                Navigator.of(context).pop();
-                sellerContext
-                    .read<SellerBloc>()
-                    .add(DeleteRestaurant(restaurantId, userId));
-              },
-            ),
-          ],
-        );
-      },
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Удалить ресторан',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: const Text(
+            'Вы уверены, что хотите удалить этот ресторан? Это действие нельзя отменить.'),
+        actions: [
+          TextButton(
+            child: Text('Назад', style: TextStyle(color: Colors.grey[600])),
+            onPressed: () => Navigator.of(ctx).pop(),
+          ),
+          TextButton(
+            child: const Text('Удалить',
+                style: TextStyle(
+                    color: AppColors.danger, fontWeight: FontWeight.w600)),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              sellerCtx
+                  .read<SellerBloc>()
+                  .add(DeleteRestaurant(restaurantId, userId));
+            },
+          ),
+        ],
+      ),
     );
   }
 }
 
-// ── Баннер добавления ресторана (вверху списка) ────────────────────────────
-class _AddRestaurantBanner extends StatelessWidget {
+// ── Нижняя навигация дашборда ─────────────────────────────────────────────
+class _DashboardBottomNav extends StatelessWidget {
+  final int currentIndex;
   final bool isOnline;
-  final VoidCallback onTap;
+  final ValueChanged<int> onTap;
 
-  const _AddRestaurantBanner({required this.isOnline, required this.onTap});
+  const _DashboardBottomNav({
+    required this.currentIndex,
+    required this.isOnline,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedOpacity(
-        opacity: isOnline ? 1.0 : 0.5,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.2),
-              width: 1.5,
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBg,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
           ),
+        ],
+        border:
+            const Border(top: BorderSide(color: AppColors.divider, width: 1)),
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          height: 64,
           child: Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.add_rounded,
-                    color: AppColors.primary, size: 20),
+              _DashNavItem(
+                icon: Icons.storefront_outlined,
+                activeIcon: Icons.storefront_rounded,
+                label: 'Рестораны',
+                isActive: currentIndex == 0,
+                onTap: () => onTap(0),
               ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Добавить ресторан',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Text(
-                      'Зарегистрируйте новое заведение',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSub,
-                      ),
-                    ),
-                  ],
-                ),
+              _DashNavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Профиль',
+                isActive: currentIndex == 1,
+                isDisabled: !isOnline,
+                onTap: () => onTap(1),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textSub, size: 20),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashNavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final bool isDisabled;
+  final VoidCallback onTap;
+
+  const _DashNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    this.isDisabled = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = isActive
+        ? AppColors.primary
+        : isDisabled
+            ? AppColors.textSub.withOpacity(0.35)
+            : AppColors.textSub;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 5),
+              child: Icon(
+                isActive ? activeIcon : icon,
+                color: color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                color: color,
+              ),
+              child: Text(label),
+            ),
+          ],
         ),
       ),
     );
@@ -491,7 +429,7 @@ class _EmptyRestaurantsState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
         SizedBox(
-          height: MediaQuery.of(context).size.height * 0.72,
+          height: MediaQuery.of(context).size.height * 0.65,
           child: Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),

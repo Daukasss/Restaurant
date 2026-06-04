@@ -43,32 +43,26 @@ class SellerBloc extends Bloc<SellerEvent, SellerState> {
     Emitter<SellerState> emit,
   ) async {
     try {
-      await _restaurantService.deleteRestaurant(event.restaurantId);
-      emit(const RestaurantDeleted('Ресторан успешно удален!'));
-      // This will be passed from the UI layer
-      if (state is SellerLoaded) {
-        final currentState = state as SellerLoaded;
-        if (currentState.restaurants.isNotEmpty) {
-          final userId = currentState.restaurants.first['user_id'] as String;
-          add(LoadRestaurants(userId));
-        }
-      }
+      emit(SellerLoading());
+
+      await _restaurantService.deleteRestaurant(
+        event.restaurantId,
+      );
+
+      emit(const RestaurantDeleted(
+        'Ресторан успешно удален!',
+      ));
+
+      add(LoadRestaurants(event.userId));
     } catch (error) {
       debugPrint('[v0] Error deleting restaurant: $error');
-      emit(const SellerOperationFailure(
-          'Ошибка удаления ресторана!У вас имеется бронирование.Для безопасности просим обратиться к админстрации.'));
 
-      // 🔧 FIX: Add proper state and null checks before reloading
-      if (state is SellerLoaded) {
-        final currentState = state as SellerLoaded;
-        if (currentState.restaurants.isNotEmpty) {
-          final userId = currentState.restaurants.first['user_id'];
-          // Check if userId is not null before reloading
-          if (userId != null) {
-            add(LoadRestaurants(userId as String));
-          }
-        }
-      }
+      emit(
+        const SellerOperationFailure(
+          'Ошибка удаления ресторана! У вас имеется бронирование. '
+          'Для безопасности просим обратиться к администрации.',
+        ),
+      );
     }
   }
 

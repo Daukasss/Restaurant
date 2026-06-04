@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restauran/presentation/widgets/custom_text_field.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
+import 'package:restauran/theme/app_colors.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../../../data/services/service_locator.dart';
 import '../../../../../../data/services/abstract/abstract_auth_services.dart';
@@ -71,150 +72,179 @@ class _RegisterPageState extends State<RegisterPage> {
           }
         },
         child: Scaffold(
-          appBar: AppBar(title: const Text('Создать аккаунт')),
+          appBar: AppBar(
+            surfaceTintColor: AppColors.surface,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            backgroundColor: AppColors.surface,
+          ),
+          backgroundColor: AppColors.surface,
           body: Center(
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: SingleChildScrollView(
-                  child: BlocBuilder<RegisterCubit, RegisterState>(
-                    builder: (context, state) {
-                      final isLoading = state is RegisterLoading;
+                padding: const EdgeInsets.fromLTRB(20.0, 0, 20.0, 20.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: SingleChildScrollView(
+                      child: BlocBuilder<RegisterCubit, RegisterState>(
+                        builder: (context, state) {
+                          final isLoading = state is RegisterLoading;
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Создать аккаунт',
-                              style: TextStyle(
-                                  fontSize: 32, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          const Text(
-                              'Зарегистрируйтесь с помощью номера телефона',
-                              style:
-                                  TextStyle(fontSize: 16, color: Colors.grey)),
-                          const SizedBox(height: 32),
-
-                          CustomTextField(
-                            hintText: 'Имя',
-                            prefixIcon: Icons.person,
-                            controller: _nameController,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomTextField(
-                            controller: _phoneController,
-                            hintText: '+7 777 777 77 77',
-                            prefixIcon: Icons.phone,
-                            isPhoneNumber: true,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomTextField(
-                            controller: _passwordController,
-                            hintText: 'Пароль',
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: _obscurePassword,
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword
-                                  ? Icons.visibility
-                                  : Icons.visibility_off),
-                              onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          CustomTextField(
-                            controller: _confirmPasswordController,
-                            hintText: 'Подтвердите пароль',
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: _obscureConfirmPassword,
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscureConfirmPassword
-                                  ? Icons.visibility
-                                  : Icons.visibility_off),
-                              onPressed: () => setState(() =>
-                                  _obscureConfirmPassword =
-                                      !_obscureConfirmPassword),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // ✅ Галочка согласия
-                          Row(
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Checkbox(
-                                value: _agree,
-                                onChanged: (value) {
-                                  setState(() => _agree = value!);
-                                },
+                              const Text('Создать аккаунт',
+                                  style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              const Text(
+                                  'Зарегистрируйтесь с помощью номера телефона',
+                                  style: TextStyle(
+                                      fontSize: 16, color: Colors.grey)),
+                              const SizedBox(height: 32),
+
+                              CustomTextField(
+                                hintText: 'Имя',
+                                prefixIcon: Icons.person,
+                                controller: _nameController,
                               ),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    linkPolicy();
-                                  },
-                                  child: const Text.rich(
-                                    TextSpan(
-                                      text: 'Я согласен с ',
-                                      children: [
+                              const SizedBox(height: 16),
+                              CustomTextField(
+                                controller: _phoneController,
+                                hintText: '+7 777 777 77 77',
+                                prefixIcon: Icons.phone,
+                                isPhoneNumber: true,
+                              ),
+                              const SizedBox(height: 16),
+                              CustomTextField(
+                                controller: _passwordController,
+                                hintText: 'Пароль',
+                                prefixIcon: Icons.lock_outline,
+                                obscureText: _obscurePassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off),
+                                  onPressed: () => setState(() =>
+                                      _obscurePassword = !_obscurePassword),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              CustomTextField(
+                                controller: _confirmPasswordController,
+                                hintText: 'Подтвердите пароль',
+                                prefixIcon: Icons.lock_outline,
+                                obscureText: _obscureConfirmPassword,
+                                suffixIcon: IconButton(
+                                  icon: Icon(_obscureConfirmPassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off),
+                                  onPressed: () => setState(() =>
+                                      _obscureConfirmPassword =
+                                          !_obscureConfirmPassword),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // ✅ Галочка согласия
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _agree,
+                                    onChanged: (value) {
+                                      setState(() => _agree = value!);
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        linkPolicy();
+                                      },
+                                      child: const Text.rich(
                                         TextSpan(
-                                          text: 'политикой конфиденциальности',
-                                          style: TextStyle(
-                                            color: Colors.blue,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          ),
+                                          text: 'Я согласен с ',
+                                          children: [
+                                            TextSpan(
+                                              text:
+                                                  'политикой конфиденциальности',
+                                              style: TextStyle(
+                                                color: AppColors.primary,
+                                                decoration:
+                                                    TextDecoration.underline,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: !_agree || isLoading
+                                      ? null
+                                      : () {
+                                          if (_phoneController.text.isEmpty ||
+                                              _passwordController
+                                                  .text.isEmpty ||
+                                              _confirmPasswordController
+                                                  .text.isEmpty ||
+                                              _nameController.text.isEmpty) {
+                                            showResultDialog(
+                                              context: context,
+                                              isSuccess: false,
+                                              title: 'Ошибка',
+                                              message: 'Заполните все поля',
+                                            );
+                                            return;
+                                          }
+                                          if (_passwordController.text !=
+                                              _confirmPasswordController.text) {
+                                            showResultDialog(
+                                              context: context,
+                                              isSuccess: false,
+                                              title: 'Ошибка',
+                                              message: 'Пароли не совпадают',
+                                            );
+                                            return;
+                                          }
+                                          context.read<RegisterCubit>().sendOtp(
+                                              phone: _phoneController.text);
+                                        },
+                                  child: isLoading
+                                      ? const CircularProgressIndicator
+                                          .adaptive(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white))
+                                      : const Text('Отправить код'),
                                 ),
                               ),
                             ],
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: !_agree || isLoading
-                                  ? null
-                                  : () {
-                                      if (_phoneController.text.isEmpty ||
-                                          _passwordController.text.isEmpty ||
-                                          _confirmPasswordController
-                                              .text.isEmpty ||
-                                          _nameController.text.isEmpty) {
-                                        showResultDialog(
-                                          context: context,
-                                          isSuccess: false,
-                                          title: 'Ошибка',
-                                          message: 'Заполните все поля',
-                                        );
-                                        return;
-                                      }
-                                      if (_passwordController.text !=
-                                          _confirmPasswordController.text) {
-                                        showResultDialog(
-                                          context: context,
-                                          isSuccess: false,
-                                          title: 'Ошибка',
-                                          message: 'Пароли не совпадают',
-                                        );
-                                        return;
-                                      }
-                                      context.read<RegisterCubit>().sendOtp(
-                                          phone: _phoneController.text);
-                                    },
-                              child: isLoading
-                                  ? const CircularProgressIndicator.adaptive(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white))
-                                  : const Text('Отправить код'),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),

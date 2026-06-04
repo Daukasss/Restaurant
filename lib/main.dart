@@ -70,6 +70,7 @@ Future<void> main() async {
   }
 
   // ─── DI ───────────────────────────────────────────────────────────────────
+
   await setupLocator();
 
   await initializeDateFormatting('ru');

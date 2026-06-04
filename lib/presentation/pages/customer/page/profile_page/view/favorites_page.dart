@@ -70,7 +70,7 @@ class FavoritesPage extends StatelessWidget {
             );
           }
 
-          return RefreshIndicator(
+          return RefreshIndicator.adaptive(
             color: AppColors.primary,
             onRefresh: () async {
               context.read<ProfileBloc>().add(LoadUserData());

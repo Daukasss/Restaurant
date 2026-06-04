@@ -5,13 +5,14 @@ part of '../view/booking_page.dart';
 //  Шаг 1 — дата/время · Шаг 2 — меню/услуги
 //  Шаг 3 — личные данные · Шаг 4 — подтверждение
 // ─────────────────────────────────────────────
-class _BookingFormPage extends StatefulWidget {
+class BookingFormPage extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final String? bookingId;
   final Booking? existingBooking;
 
-  const _BookingFormPage({
+  const BookingFormPage({
+    super.key,
     required this.restaurantId,
     required this.restaurantName,
     this.bookingId,
@@ -19,10 +20,10 @@ class _BookingFormPage extends StatefulWidget {
   });
 
   @override
-  State<_BookingFormPage> createState() => _BookingFormPageState();
+  State<BookingFormPage> createState() => _BookingFormPageState();
 }
 
-class _BookingFormPageState extends State<_BookingFormPage> {
+class _BookingFormPageState extends State<BookingFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();

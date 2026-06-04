@@ -630,7 +630,7 @@ class _AdminCategoriesTabState extends State<AdminCategoriesTab> {
                     return const Center(child: Text('Нет категорий'));
                   }
 
-                  return RefreshIndicator(
+                  return RefreshIndicator.adaptive(
                     onRefresh: () async {
                       context
                           .read<AdminCategoryBloc>()

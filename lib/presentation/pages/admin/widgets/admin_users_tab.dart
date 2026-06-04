@@ -64,7 +64,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                   return const Center(child: Text('Пользователи не найдены'));
                 }
 
-                return RefreshIndicator(
+                return RefreshIndicator.adaptive(
                   onRefresh: () async {
                     context.read<AdminPanelBloc>().add(LoadUsersEvent());
                   },

@@ -128,7 +128,7 @@ class ProfileView extends StatelessWidget {
                       ProfileMenuTile(
                         icon: Icons.event_available_outlined,
                         title: 'Мои бронирования',
-                        subtitle: '${state.bookings.length} активных',
+                        subtitle: '${state.bookings.length}',
                         onTap: () => _open(
                           context,
                           bloc,
@@ -138,7 +138,7 @@ class ProfileView extends StatelessWidget {
                       ProfileMenuTile(
                         icon: Icons.favorite_border_rounded,
                         title: 'Избранное',
-                        subtitle: '${state.favorites.length} заведений',
+                        subtitle: '${state.favorites.length}',
                         onTap: () => _open(
                           context,
                           bloc,

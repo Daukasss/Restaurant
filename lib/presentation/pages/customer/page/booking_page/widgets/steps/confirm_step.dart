@@ -257,12 +257,18 @@ class _SummaryRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: _textSub),
           const SizedBox(width: 10),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: _textSub),
+          SizedBox(
+            width: 90, // одинаковая ширина для всех label
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: _textSub,
+              ),
+            ),
           ),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
               value,
               textAlign: TextAlign.right,

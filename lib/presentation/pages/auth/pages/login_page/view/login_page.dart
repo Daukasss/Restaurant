@@ -4,6 +4,7 @@ import 'package:restauran/data/services/abstract/abstract_auth_services.dart';
 import 'package:restauran/data/services/service_locator.dart';
 import 'package:restauran/presentation/pages/auth/pages/register_page/view/register_page.dart';
 import 'package:restauran/presentation/widgets/result_diolog.dart';
+import 'package:restauran/theme/app_colors.dart';
 import '../../../../../widgets/custom_text_field.dart';
 import '../../../../admin/view/admin_panel_page.dart';
 import '../../../../customer/page/home_page/view/home_page.dart';
@@ -82,114 +83,135 @@ class _LoginViewState extends State<LoginView> {
         }
       },
       child: Scaffold(
+        backgroundColor: AppColors.surface,
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Center(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'С возвращением!',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Войдите с помощью номера телефона и пароля',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    CustomTextField(
-                      controller: _phoneController,
-                      hintText: '+7 777 777 77 77',
-                      prefixIcon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      isPhoneNumber: true,
-                    ),
-                    const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: _passwordController,
-                      hintText: 'Пароль',
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: _obscurePassword,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    BlocBuilder<AuthCubit, AuthState>(
-                      builder: (context, state) {
-                        final isLoading = state is AuthLoading;
-                        return SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: isLoading
-                                ? null
-                                : () {
-                                    if (_phoneController.text.isEmpty ||
-                                        _passwordController.text.isEmpty) {
-                                      showResultDialog(
-                                        context: context,
-                                        isSuccess: false,
-                                        title: 'Ошибка',
-                                        message:
-                                            'Введите номер телефона и пароль',
-                                      );
-                                      return;
-                                    }
-                                    context
-                                        .read<AuthCubit>()
-                                        .signInWithPhoneAndPassword(
-                                          phone: _phoneController.text,
-                                          password: _passwordController.text,
-                                        );
-                                  },
-                            child: isLoading
-                                ? const CircularProgressIndicator.adaptive(
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white))
-                                : const Text('Войти'),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              // crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Нет аккаунта?'),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const RegisterPage(),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(children: [
+                          const Text(
+                            'С возвращением!',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Войдите с помощью номера телефона и пароля',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 48),
+                          CustomTextField(
+                            controller: _phoneController,
+                            hintText: '+7 777 777 77 77',
+                            prefixIcon: Icons.phone,
+                            keyboardType: TextInputType.phone,
+                            isPhoneNumber: true,
+                          ),
+                          const SizedBox(height: 16),
+                          CustomTextField(
+                            controller: _passwordController,
+                            hintText: 'Пароль',
+                            prefixIcon: Icons.lock_outline,
+                            obscureText: _obscurePassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                               ),
-                            );
-                          },
-                          child: const Text('Зарегистрироваться'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          BlocBuilder<AuthCubit, AuthState>(
+                            builder: (context, state) {
+                              final isLoading = state is AuthLoading;
+                              return SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: isLoading
+                                      ? null
+                                      : () {
+                                          if (_phoneController.text.isEmpty ||
+                                              _passwordController
+                                                  .text.isEmpty) {
+                                            showResultDialog(
+                                              context: context,
+                                              isSuccess: false,
+                                              title: 'Ошибка',
+                                              message:
+                                                  'Введите номер телефона и пароль',
+                                            );
+                                            return;
+                                          }
+                                          context
+                                              .read<AuthCubit>()
+                                              .signInWithPhoneAndPassword(
+                                                phone: _phoneController.text,
+                                                password:
+                                                    _passwordController.text,
+                                              );
+                                        },
+                                  child: isLoading
+                                      ? const CircularProgressIndicator
+                                          .adaptive(
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white))
+                                      : const Text('Войти'),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text('Нет аккаунта?'),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const RegisterPage(),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Зарегистрироваться'),
+                              ),
+                            ],
+                          ),
+                        ]),
+                      )),
+                )
+              ],
             ),
           ),
         ),

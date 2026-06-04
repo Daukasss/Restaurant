@@ -3,10 +3,10 @@ part of '../view/booking_page.dart';
 // ─────────────────────────────────────────────
 //  DATE MANAGEMENT PAGE (Seller Tab 2)
 // ─────────────────────────────────────────────
-class _DateManagementPage extends StatelessWidget {
+class DateManagementPage extends StatelessWidget {
   final String restaurantId;
 
-  const _DateManagementPage({required this.restaurantId});
+  const DateManagementPage({required this.restaurantId});
 
   @override
   Widget build(BuildContext context) {
