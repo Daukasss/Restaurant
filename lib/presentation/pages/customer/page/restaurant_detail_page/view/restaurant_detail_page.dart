@@ -186,7 +186,10 @@ class _RestaurantDetailViewState extends State<RestaurantDetailView>
                               controller: _tabController,
                               children: [
                                 _buildOverviewTab(state),
-                                BuildMenuTab(context: context, state: state),
+                                BuildMenuTab(
+                                  context: context,
+                                  state: state,
+                                ),
                               ],
                             ),
                           ),

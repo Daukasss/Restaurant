@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../../../data/models/restaurant.dart';
-import '../../../../../../data/models/restaurant_category.dart';
 import '../../../../../../data/models/restaurant_extra.dart';
 import '../../../../../../data/services/restaurant_service.dart';
 import '../../../../../../data/services/category_service.dart'; // НОВОЕ
@@ -28,6 +27,8 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     on<UpdateName>(_onUpdateName);
     on<UpdateDescription>(_onUpdateDescription);
     on<UpdateLocation>(_onUpdateLocation);
+    on<UpdateCity>(_onUpdateCity);
+    on<UpdateDistrict>(_onUpdateDistrict);
     on<UpdatePhone>(_onUpdatePhone);
     on<UpdateWorkingHours>(_onUpdateWorkingHours);
     on<UpdatePriceRange>(_onUpdatePriceRange);
@@ -119,6 +120,9 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
           name: restaurant.name,
           description: restaurant.description ?? '',
           location: restaurant.location ?? '',
+          country: restaurant.country ?? 'Казахстан',
+          city: restaurant.city ?? '',
+          district: restaurant.district ?? '',
           phones: phones,
           workingHours: restaurant.workingHours ?? '',
           sumPeople: restaurant.sumPeople?.toString() ?? '',
@@ -409,6 +413,15 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
     emit(state.copyWith(location: event.location));
   }
 
+  void _onUpdateCity(UpdateCity event, Emitter<RestaurantState> emit) {
+    // При смене города сбрасываем микрорайон
+    emit(state.copyWith(city: event.city, district: ''));
+  }
+
+  void _onUpdateDistrict(UpdateDistrict event, Emitter<RestaurantState> emit) {
+    emit(state.copyWith(district: event.district));
+  }
+
   void _onUpdatePhone(UpdatePhone event, Emitter<RestaurantState> emit) {
     // Разделяем строку на массив телефонов
     final phones = event.phone
@@ -524,6 +537,9 @@ class RestaurantBloc extends Bloc<RestaurantEvent, RestaurantState> {
         name: state.name,
         description: state.description,
         location: state.location,
+        country: state.country,
+        city: state.city,
+        district: state.district,
         phone: phoneString,
         workingHours: state.workingHours,
         ownerId: currentUser.uid,

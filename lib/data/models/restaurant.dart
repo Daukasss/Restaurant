@@ -3,6 +3,9 @@ class Restaurant {
   final String name;
   final String? description;
   final String? location;
+  final String? country;
+  final String? city;
+  final String? district;
   final String? phone;
   final String? workingHours;
   final String? ownerId;
@@ -16,6 +19,9 @@ class Restaurant {
     required this.name,
     required this.description,
     required this.location,
+    this.country = 'Казахстан',
+    this.city,
+    this.district,
     required this.phone,
     required this.workingHours,
     required this.ownerId,
@@ -45,6 +51,9 @@ class Restaurant {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       location: json['location'] ?? '',
+      country: json['country'] ?? 'Казахстан',
+      city: json['city'] ?? '',
+      district: json['district'] ?? '',
       phone: json['phone'] ?? '',
       workingHours: json['working_hours'] ?? '',
       ownerId: json['owner_id'] ?? '',
@@ -66,6 +75,9 @@ class Restaurant {
       'name': name,
       'description': description,
       'location': location,
+      'country': country ?? 'Казахстан',
+      'city': city ?? '',
+      'district': district ?? '',
       'phone': phone,
       'working_hours': workingHours,
       'owner_id': ownerId,

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:restauran/data/services/restaurant_service.dart';
 import 'package:restauran/presentation/widgets/search_bar.dart';
+import 'package:restauran/theme/app_colors.dart';
 
 import '../../../widgets/restaurant_card.dart';
 import '../../profile_page/view/profile_page.dart';
@@ -14,7 +15,6 @@ import '../../../../auth/pages/login_page/view/login_page.dart';
 import '../bloc/home_bloc.dart';
 import '../bloc/home_event.dart';
 import '../bloc/home_state.dart';
-import '../widgets/filter_bottom_sheet.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -78,6 +78,7 @@ class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: BlocConsumer<HomeBloc, HomeState>(
           // Слушаем смену категории и подгружаем название
@@ -105,9 +106,16 @@ class _HomeViewState extends State<HomeView> {
                     floating: true,
                     snap: true,
                     centerTitle: false,
+                    backgroundColor: AppColors.surface,
+                    surfaceTintColor: AppColors.surface,
                     title: const Text(
                       'Aq Той',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textMain,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                     actions: [
                       IconButton(

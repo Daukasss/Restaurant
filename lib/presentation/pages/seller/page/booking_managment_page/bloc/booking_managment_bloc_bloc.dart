@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:restauran/data/services/abstract/service_export.dart';
 import 'package:restauran/data/services/background_sync_service.dart';
 import 'package:restauran/data/services/booking_cache_service.dart';
+import 'package:restauran/data/services/booking_enrichment_service.dart';
 import 'package:restauran/data/services/connectivity_service.dart';
 import 'package:restauran/data/services/service_locator.dart';
 
@@ -18,6 +19,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   final _bookingService = getIt<AbstractBookingService>();
   final _cacheService = BookingCacheService();
   final _connectivityService = ConnectivityService();
+  final _enrichmentService = BookingEnrichmentService();
 
   StreamSubscription<bool>? _connectivitySub;
   String? _currentRestaurantId;
@@ -61,7 +63,6 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     Emitter<BookingState> emit,
   ) async {
     try {
-      // ✅ Запрашиваем данные ресторана и бронирования параллельно
       final results = await Future.wait([
         _restaurantService.getRestaurantData(restaurantId),
         _bookingService.getBookings(restaurantId),
@@ -73,21 +74,17 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       final pricePerGuest = restaurantData['pricePerGuest'] as double?;
       final sumPeople = restaurantData['sumPeople'] as int?;
 
-      // Сохраняем мета и время кэша параллельно
-      await Future.wait([
-        _cacheService.saveRestaurantMeta(
-          restaurantId,
-          pricePerGuest: pricePerGuest,
-          sumPeople: sumPeople,
-        ),
-      ]);
+      await _cacheService.saveRestaurantMeta(
+        restaurantId,
+        pricePerGuest: pricePerGuest,
+        sumPeople: sumPeople,
+      );
 
       bookings = _updateBookingStatusesByTime(bookings);
       bookings.sort(_compareBookingsByDateAndTime);
 
-      // ✅ Обогащение (категория / extras / меню) убрано отсюда.
-      // Оно происходит лениво — в BookingDetailPage при открытии детали.
-      // Благодаря этому список отображается сразу после получения bookings.
+      // ✅ Обогащаем ДО сохранения в кэш
+      bookings = await _enrichmentService.enrich(bookings);
 
       await _cacheService.saveBookings(restaurantId, bookings);
       await _cacheService.saveLastUpdated(restaurantId);

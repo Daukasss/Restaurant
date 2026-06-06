@@ -57,6 +57,24 @@ class UpdateLocation extends RestaurantEvent {
   List<Object?> get props => [location];
 }
 
+class UpdateCity extends RestaurantEvent {
+  final String city;
+
+  const UpdateCity(this.city);
+
+  @override
+  List<Object?> get props => [city];
+}
+
+class UpdateDistrict extends RestaurantEvent {
+  final String district;
+
+  const UpdateDistrict(this.district);
+
+  @override
+  List<Object?> get props => [district];
+}
+
 class UpdatePhone extends RestaurantEvent {
   final String phone;
 
@@ -147,9 +165,8 @@ class SaveRestaurant extends RestaurantEvent {
   List<Object?> get props => [context];
 }
 
-// ==================== НОВЫЕ СОБЫТИЯ ДЛЯ КАТЕГОРИЙ ====================
+// ==================== СОБЫТИЯ ДЛЯ КАТЕГОРИЙ ====================
 
-/// Загрузить доступные глобальные категории для ресторана
 class LoadAvailableGlobalCategories extends RestaurantEvent {
   final String restaurantId;
 
@@ -159,7 +176,6 @@ class LoadAvailableGlobalCategories extends RestaurantEvent {
   List<Object?> get props => [restaurantId];
 }
 
-/// Загрузить категории ресторана
 class LoadRestaurantCategories extends RestaurantEvent {
   final String restaurantId;
 
@@ -169,7 +185,6 @@ class LoadRestaurantCategories extends RestaurantEvent {
   List<Object?> get props => [restaurantId];
 }
 
-/// Активировать глобальную категорию для ресторана
 class ActivateRestaurantCategory extends RestaurantEvent {
   final String globalCategoryId;
   final double price;
@@ -185,7 +200,6 @@ class ActivateRestaurantCategory extends RestaurantEvent {
   List<Object?> get props => [globalCategoryId, price, description];
 }
 
-/// Обновить категорию ресторана (цена, описание, активность)
 class UpdateRestaurantCategory extends RestaurantEvent {
   final String categoryId;
   final double? price;
@@ -203,7 +217,6 @@ class UpdateRestaurantCategory extends RestaurantEvent {
   List<Object?> get props => [categoryId, price, description, isActive];
 }
 
-/// Деактивировать категорию ресторана
 class DeactivateRestaurantCategory extends RestaurantEvent {
   final String categoryId;
 

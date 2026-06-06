@@ -1,9 +1,8 @@
 // ignore_for_file: avoid_print, use_build_context_synchronously
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:restauran/core/kz_locations.dart' show KzLocations;
 import 'package:restauran/presentation/pages/seller/page/add_edit_restaurant/bloc/restaurant_state.dart';
 import 'package:restauran/presentation/pages/seller/page/add_edit_restaurant/widget/restaurant_categories_widget.dart';
 import 'package:restauran/theme/app_colors.dart';
@@ -73,7 +72,9 @@ class _AddRestaurantPageState extends State<AddRestaurantPage> {
 
   // Обязательные поля первого шага.
   bool _isStep1Valid(RestaurantState state) =>
-      state.name.trim().isNotEmpty && state.location.trim().isNotEmpty;
+      state.name.trim().isNotEmpty &&
+      state.city.trim().isNotEmpty &&
+      state.district.trim().isNotEmpty;
 
   bool _canProceedFrom(int step, RestaurantState state) {
     if (step == 0) return _isStep1Valid(state);
@@ -128,7 +129,8 @@ class _AddRestaurantPageState extends State<AddRestaurantPage> {
   void _showStepError() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Заполните название и местоположение, чтобы продолжить'),
+        content:
+            Text('Заполните название, город и микрорайон, чтобы продолжить'),
         backgroundColor: AppColors.danger,
         behavior: SnackBarBehavior.floating,
       ),
@@ -440,69 +442,192 @@ class _StepInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final bloc = context.read<RestaurantBloc>();
 
-    return _StepScaffold(
-      title: 'Общая информация',
-      subtitle: 'Расскажите гостям о вашем ресторане',
+    return BlocBuilder<RestaurantBloc, RestaurantState>(
+      builder: (context, state) {
+        final districts = state.city.isNotEmpty
+            ? (KzLocations.getDistricts(state.city) ?? [])
+            : <String>[];
+
+        return _StepScaffold(
+          title: 'Общая информация',
+          subtitle: 'Расскажите гостям о вашем ресторане',
+          children: [
+            _SoftCard(
+              child: Column(
+                children: [
+                  CustomTextField(
+                    controller: nameController,
+                    onChanged: (v) => bloc.add(UpdateName(v)),
+                    hintText: 'Название ресторана*',
+                    prefixIcon: Icons.restaurant,
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: descriptionController,
+                    onChanged: (v) => bloc.add(UpdateDescription(v)),
+                    hintText: 'Описание',
+                    prefixIcon: Icons.description,
+                    keyboardType: TextInputType.multiline,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  // ── Город ──
+                  _LocationDropdownRow(
+                    icon: Icons.location_city,
+                    label: 'Город / Регион *',
+                    value: state.city.isEmpty ? null : state.city,
+                    items: KzLocations.cityNames,
+                    onChanged: (v) {
+                      if (v != null) bloc.add(UpdateCity(v));
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // ── Микрорайон ──
+                  _LocationDropdownRow(
+                    icon: Icons.map_outlined,
+                    label: 'Микрорайон / Район *',
+                    value: state.district.isEmpty ? null : state.district,
+                    items: districts,
+                    enabled: state.city.isNotEmpty,
+                    onChanged: (v) {
+                      if (v != null) bloc.add(UpdateDistrict(v));
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  // ── Адрес (улица/дом) ──
+                  CustomTextField(
+                    controller: locationController,
+                    onChanged: (v) => bloc.add(UpdateLocation(v)),
+                    hintText: 'Адрес (улица, дом)',
+                    prefixIcon: Icons.location_on,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SoftCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextField(
+                    controller: phonesController,
+                    onChanged: (v) => bloc.add(UpdatePhone(v)),
+                    hintText: 'Номера телефонов',
+                    prefixIcon: Icons.phone,
+                    isMultiplePhones: true,
+                    keyboardType: TextInputType.multiline,
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Введите каждый номер с новой строки',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSub,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: sumPeopleController,
+                    onChanged: (v) => bloc.add(UpdateSumPeople(v)),
+                    hintText: 'Кол-во мест в одном столе',
+                    prefixIcon: Icons.people,
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ==================== ДРОПДАУН ЛОКАЦИИ ====================
+
+class _LocationDropdownRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String? value;
+  final List<String> items;
+  final ValueChanged<String?>? onChanged;
+  final bool enabled;
+
+  const _LocationDropdownRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.enabled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveEnabled = enabled && items.isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _SoftCard(
-          child: Column(
-            children: [
-              CustomTextField(
-                controller: nameController,
-                onChanged: (v) => bloc.add(UpdateName(v)),
-                hintText: 'Название ресторана*',
-                prefixIcon: Icons.restaurant,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: descriptionController,
-                onChanged: (v) => bloc.add(UpdateDescription(v)),
-                hintText: 'Описание',
-                prefixIcon: Icons.description,
-                keyboardType: TextInputType.multiline,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: locationController,
-                onChanged: (v) => bloc.add(UpdateLocation(v)),
-                hintText: 'Местоположение *',
-                prefixIcon: Icons.location_on,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _SoftCard(
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: 12),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CustomTextField(
-                controller: phonesController,
-                onChanged: (v) => bloc.add(UpdatePhone(v)),
-                hintText: 'Номера телефонов',
-                prefixIcon: Icons.phone,
-                isMultiplePhones: true,
-                keyboardType: TextInputType.multiline,
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSub),
               ),
-              const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: Text(
-                  'Введите каждый номер с новой строки',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSub,
-                    fontStyle: FontStyle.italic,
+              const SizedBox(height: 2),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value:
+                      (value != null && items.contains(value)) ? value : null,
+                  hint: Text(
+                    effectiveEnabled ? 'Выберите' : 'Сначала выберите город',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: effectiveEnabled
+                          ? AppColors.textMain
+                          : AppColors.textSub,
+                    ),
                   ),
+                  isExpanded: true,
+                  isDense: true,
+                  icon: Icon(Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.primary),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textMain,
+                    // fontFamily: 'YourFont', // наследует тему
+                  ),
+                  dropdownColor: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(14),
+                  items: effectiveEnabled
+                      ? items
+                          .map((item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(
+                                  item,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
+                          .toList()
+                      : null,
+                  onChanged: effectiveEnabled ? onChanged : null,
                 ),
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: sumPeopleController,
-                onChanged: (v) => bloc.add(UpdateSumPeople(v)),
-                hintText: 'Кол-во мест в одном столе',
-                prefixIcon: Icons.people,
-                keyboardType: TextInputType.number,
               ),
             ],
           ),
@@ -653,8 +778,13 @@ class _StepReview extends StatelessWidget {
             children: [
               _reviewRow(Icons.restaurant, 'Название',
                   state.name.isEmpty ? '—' : state.name),
-              _reviewRow(Icons.location_on, 'Местоположение',
-                  state.location.isEmpty ? '—' : state.location),
+              _reviewRow(Icons.public, 'Страна', 'Казахстан'),
+              _reviewRow(Icons.location_city, 'Город',
+                  state.city.isEmpty ? '—' : state.city),
+              _reviewRow(Icons.map_outlined, 'Микрорайон',
+                  state.district.isEmpty ? '—' : state.district),
+              if (state.location.isNotEmpty)
+                _reviewRow(Icons.location_on, 'Адрес', state.location),
               _reviewRow(
                 Icons.phone,
                 'Телефоны',

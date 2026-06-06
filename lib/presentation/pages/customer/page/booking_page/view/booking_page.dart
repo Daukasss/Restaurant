@@ -109,7 +109,10 @@ class MenuTabPage extends StatelessWidget {
                     valueColor: AlwaysStoppedAnimation<Color>(_primary)),
               );
             }
-            return BuildMenuTab(context: context, state: state);
+            return BuildMenuTab(
+              context: context,
+              state: state,
+            );
           },
         ),
       ),

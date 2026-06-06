@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:restauran/data/models/booking_hive_model.dart';
 import 'package:restauran/data/services/booking_cache_service.dart';
+import 'package:restauran/data/services/booking_enrichment_service.dart';
 import 'package:restauran/firebase_options.dart';
 
 // Workmanager импортируем только на мобильных платформах
@@ -108,7 +109,7 @@ class BackgroundSyncService {
           return data;
         }).toList();
 
-        final enriched = await _enrichBookings(firestore, rawBookings);
+        final enriched = await BookingEnrichmentService().enrich(rawBookings);
 
         await cacheService.saveBookings(restaurantId, enriched);
         await cacheService.saveLastUpdated(restaurantId);
@@ -119,78 +120,6 @@ class BackgroundSyncService {
         debugPrint('[BackgroundSync] ❌ Ошибка ресторана $restaurantId: $e');
       }
     }
-  }
-
-  static Future<List<Map<String, dynamic>>> _enrichBookings(
-    FirebaseFirestore firestore,
-    List<Map<String, dynamic>> bookings,
-  ) async {
-    final enriched = <Map<String, dynamic>>[];
-
-    for (final booking in bookings) {
-      final map = Map<String, dynamic>.from(booking);
-
-      final categoryId = map['restaurant_category_id']?.toString();
-      if (categoryId != null && categoryId.isNotEmpty) {
-        try {
-          final doc = await firestore
-              .collection('restaurant_categories')
-              .doc(categoryId)
-              .get();
-          map['_category_name'] = doc.data()?['name']?.toString() ?? '';
-        } catch (_) {
-          map['_category_name'] = '';
-        }
-      }
-
-      final extrasIds = map['selected_extras'];
-      if (extrasIds is List && extrasIds.isNotEmpty) {
-        final names = <String>[];
-        for (final id in extrasIds) {
-          try {
-            final doc = await firestore
-                .collection('restaurant_extras')
-                .doc(id.toString())
-                .get();
-            if (doc.exists) {
-              names.add(doc.data()?['name']?.toString() ?? '');
-            }
-          } catch (_) {}
-        }
-        map['_extras_names'] = names;
-      } else {
-        map['_extras_names'] = <String>[];
-      }
-
-      final menuSelections = map['menu_selections'];
-      if (menuSelections is Map && menuSelections.isNotEmpty) {
-        final menuItems = <Map<String, String>>[];
-        for (final entry in menuSelections.entries) {
-          try {
-            final categoryDoc = await firestore
-                .collection('menu_categories')
-                .doc(entry.key.toString())
-                .get();
-            final categoryName = categoryDoc.data()?['name']?.toString() ?? '—';
-
-            final itemDoc = await firestore
-                .collection('menu_items')
-                .doc(entry.value.toString())
-                .get();
-            final itemName = itemDoc.data()?['name']?.toString() ?? '—';
-
-            menuItems.add({'category': categoryName, 'item': itemName});
-          } catch (_) {}
-        }
-        map['_menu_items'] = menuItems;
-      } else {
-        map['_menu_items'] = <Map<String, String>>[];
-      }
-
-      enriched.add(map);
-    }
-
-    return enriched;
   }
 
   static Future<List<String>> _getKnownRestaurantIds() async {

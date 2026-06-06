@@ -7,6 +7,9 @@ class RestaurantState extends Equatable {
   final String name;
   final String description;
   final String location;
+  final String country;
+  final String city;
+  final String district;
   final List<String> phones;
   final String workingHours;
   final String priceRange;
@@ -24,10 +27,8 @@ class RestaurantState extends Equatable {
   final List<DateTime> tempBookedDates;
 
   // Категории
-  final List<GlobalCategory>
-      availableGlobalCategories; // НОВОЕ: доступные глобальные категории
-  final List<RestaurantCategory>
-      restaurantCategories; // Активированные категории ресторана
+  final List<GlobalCategory> availableGlobalCategories;
+  final List<RestaurantCategory> restaurantCategories;
   final bool isCategoriesLoading;
 
   // Дополнительные опции
@@ -38,6 +39,9 @@ class RestaurantState extends Equatable {
     this.name = '',
     this.description = '',
     this.location = '',
+    this.country = 'Казахстан',
+    this.city = '',
+    this.district = '',
     this.phones = const [],
     this.workingHours = '',
     this.priceRange = '',
@@ -53,7 +57,7 @@ class RestaurantState extends Equatable {
     this.rating = 5.0,
     this.restaurantId = '',
     this.tempBookedDates = const [],
-    this.availableGlobalCategories = const [], // НОВОЕ
+    this.availableGlobalCategories = const [],
     this.restaurantCategories = const [],
     this.isCategoriesLoading = false,
     this.restaurantExtras = const [],
@@ -64,6 +68,9 @@ class RestaurantState extends Equatable {
     String? name,
     String? description,
     String? location,
+    String? country,
+    String? city,
+    String? district,
     List<String>? phones,
     String? workingHours,
     String? priceRange,
@@ -79,7 +86,7 @@ class RestaurantState extends Equatable {
     double? rating,
     String? restaurantId,
     List<DateTime>? tempBookedDates,
-    List<GlobalCategory>? availableGlobalCategories, // НОВОЕ
+    List<GlobalCategory>? availableGlobalCategories,
     List<RestaurantCategory>? restaurantCategories,
     bool? isCategoriesLoading,
     List<RestaurantExtra>? restaurantExtras,
@@ -89,6 +96,9 @@ class RestaurantState extends Equatable {
       name: name ?? this.name,
       description: description ?? this.description,
       location: location ?? this.location,
+      country: country ?? this.country,
+      city: city ?? this.city,
+      district: district ?? this.district,
       phones: phones ?? this.phones,
       workingHours: workingHours ?? this.workingHours,
       priceRange: priceRange ?? this.priceRange,
@@ -106,7 +116,7 @@ class RestaurantState extends Equatable {
       restaurantId: restaurantId ?? this.restaurantId,
       tempBookedDates: tempBookedDates ?? this.tempBookedDates,
       availableGlobalCategories:
-          availableGlobalCategories ?? this.availableGlobalCategories, // НОВОЕ
+          availableGlobalCategories ?? this.availableGlobalCategories,
       restaurantCategories: restaurantCategories ?? this.restaurantCategories,
       isCategoriesLoading: isCategoriesLoading ?? this.isCategoriesLoading,
       restaurantExtras: restaurantExtras ?? this.restaurantExtras,
@@ -119,6 +129,9 @@ class RestaurantState extends Equatable {
         name,
         description,
         location,
+        country,
+        city,
+        district,
         phones,
         workingHours,
         priceRange,
@@ -134,7 +147,7 @@ class RestaurantState extends Equatable {
         rating,
         restaurantId,
         tempBookedDates,
-        availableGlobalCategories, // НОВОЕ
+        availableGlobalCategories,
         restaurantCategories,
         isCategoriesLoading,
         restaurantExtras,
