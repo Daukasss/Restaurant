@@ -11,8 +11,10 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  static const String _termsUrl = 'https://example.com/terms';
-  static const String _privacyUrl = 'https://example.com/privacy';
+  static const String _termsUrl =
+      'https://sites.google.com/view/policy-aqtoi/условия-использования';
+  static const String _privacyUrl =
+      'https://sites.google.com/view/policy-aqtoi/политика-конфиденциальности';
 
   String _version = '';
 

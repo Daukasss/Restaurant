@@ -7,9 +7,9 @@ class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
 
   // TODO: замените на реальные контакты
-  static const String _supportEmail = 'support@restauran.app';
-  static const String _supportTelegram = 'https://t.me/restauran_support';
-  static const String _supportWhatsApp = 'https://wa.me/77001234567';
+  static const String _supportEmail = 'daulettuken@gmail.com';
+  // static const String _supportTelegram = 'https://t.me/restauran_support';
+  static const String _supportWhatsApp = 'https://wa.me/77066463761';
 
   @override
   Widget build(BuildContext context) {
@@ -104,13 +104,13 @@ class HelpPage extends StatelessWidget {
                   );
                 },
               ),
-              _ContactTile(
-                icon: Icons.send_rounded,
-                iconColor: const Color(0xFF229ED9),
-                title: 'Telegram',
-                // subtitle: '@restauran_support',
-                onTap: () => launchUrlString(_supportTelegram),
-              ),
+              // _ContactTile(
+              //   icon: Icons.send_rounded,
+              //   iconColor: const Color(0xFF229ED9),
+              //   title: 'Telegram',
+              //   // subtitle: '@restauran_support',
+              //   onTap: () => launchUrlString(_supportTelegram),
+              // ),
               _ContactTile(
                 icon: Icons.chat_bubble_outline_rounded,
                 iconColor: const Color(0xFF25D366),
@@ -148,7 +148,7 @@ class HelpPage extends StatelessWidget {
           const SizedBox(height: 8),
           const _FaqItem(
             question: 'Как зарегистрировать своё заведение?',
-            answer: 'Свяжитесь с нашей командой через email или Telegram — '
+            answer: 'Свяжитесь с нашей командой через WhatsApp — '
                 'мы подключим вас в течение 1 рабочего дня.',
           ),
         ],
