@@ -224,6 +224,7 @@ class _ContactTile extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.title,
+    // ignore: unused_element_parameter
     this.subtitle,
     required this.onTap,
     this.onLongPress,
